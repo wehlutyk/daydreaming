@@ -1,102 +1,86 @@
 package com.brainydroid.daydreaming.network;
 
 import android.util.Log;
-
 import com.brainydroid.daydreaming.ui.Config;
 
 public class HttpPostData {
 
-	private static String TAG = "HttpPostData";
+    private static String TAG = "HttpPostData";
 
-	private final String _postUrl;
-	private String _postString;
-	private String _contentType;
-	private final HttpConversationCallback _httpConversationCallback;
+    private final String postUrl;
+    private String postString = null;
+    private String contentType = null;
+    private final HttpConversationCallback httpConversationCallback;
 
-	public HttpPostData(String postUrl, HttpConversationCallback httpConversationCallback) {
+    public HttpPostData(String postUrl, HttpConversationCallback httpConversationCallback) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] HttpPostData (argset 1: small)");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] HttpPostData (argset 1: small)");
+        }
 
-		_postUrl = postUrl;
-		_postString = null;
-		_contentType = null;
-		_httpConversationCallback = httpConversationCallback;
-	}
+        this.postUrl = postUrl;
+        this.httpConversationCallback = httpConversationCallback;
+    }
 
-	public HttpPostData(String postUrl, String postString, String contentType,
-			HttpConversationCallback httpConversationCallback) {
+    public String getPostUrl() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] HttpPostData (argset 2: full)");
-		}
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] getPostUrl");
+        }
 
-		_postUrl = postUrl;
-		_postString = postString;
-		_contentType = contentType;
-		_httpConversationCallback = httpConversationCallback;
-	}
+        return postUrl;
+    }
 
-	public String getPostUrl() {
+    public String getPostString() {
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] getPostUrl");
-		}
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] getPostString");
+        }
 
-		return _postUrl;
-	}
+        return postString;
+    }
 
-	public String getPostString() {
+    public void setPostString(String postString) {
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] getPostString");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] addPostString");
+        }
 
-		return _postString;
-	}
+        this.postString = postString;
+    }
 
-	public void setPostString(String postString) {
+    public String getContentType() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] addPostString");
-		}
+        // Verbose
+        if (Config.LOGV){
+            Log.v(TAG, "[fn] getContentType");
+        }
 
-		_postString = postString;
-	}
+        return contentType;
+    }
 
-	public String getContentType() {
+    public void setContentType(String contentType) {
 
-		// Verbose
-		if (Config.LOGV){
-			Log.v(TAG, "[fn] getContentType");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] setContentType");
+        }
 
-		return _contentType;
-	}
+        this.contentType = contentType;
+    }
 
-	public void setContentType(String contentType) {
+    public HttpConversationCallback getHttpConversationCallback() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] setContentType");
-		}
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] getHttpConversationCallback");
+        }
 
-		_contentType = contentType;
-	}
+        return httpConversationCallback;
+    }
 
-	public HttpConversationCallback getHttpConversationCallback() {
-
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] getHttpConversationCallback");
-		}
-
-		return _httpConversationCallback;
-	}
 }

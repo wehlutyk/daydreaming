@@ -1,6 +1,5 @@
 package com.brainydroid.daydreaming.background;
 
-import android.app.Service;
 import android.content.Intent;
 import android.location.Location;
 import android.location.LocationListener;
@@ -9,50 +8,113 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
-
 import com.brainydroid.daydreaming.ui.Config;
+import com.google.inject.Inject;
+import roboguice.service.RoboService;
 
-public class LocationService extends Service {
+/**
+ * Listen for location updates and pass them on to any registered callbacks.
+ * <p/>
+ * This service is started by using {@link LocationServiceConnection},
+ * which can bind, start, unbind. Callbacks for the location updates are
+ * also registered through the {@code LocationServiceConnection}.
+ * <p/>
+ * The lifecycle is as follows: a {@code Service} or an {@code Activity} (in
+ * practice {@link LocationPointService} or {@link
+ * com.brainydroid.daydreaming.ui.QuestionActivity} wants to obtain some
+ * location data. To do so it needs to listen for a given period of time to
+ * leave the time to the location backend to acquire a proper location. So
+ * it will start {@code LocationService} (through the {@code
+ * LocationServiceConnection}) and register a callback to be called when
+ * location updates are received. When it has waited long enough,
+ * it will un-register its callback on the {@code LocationService} (again
+ * through the {@code LocationServiceConnection}). The {@code
+ * LocationService} will stop itself if no other callback is registered
+ * (indeed, a {@code QuestionActivity} and a {@code LocationPointService}
+ * could be listening for location updates at the same time ; when one of
+ * the finishes and un-registers, the other one doesn't want {@code
+ * LocationService} to stop until it is also done).
+ * <p/>
+ * For further details on how exactly the {@code LocationService} should be
+ * started and how to register callbacks on it,
+ * see {@link LocationServiceConnection}.
+ *
+ * @author Sébastien Lerique
+ * @author Vincent Adam
+ */
+public class LocationService extends RoboService {
 
-	private static String TAG = "LocationService";
+    private static String TAG = "LocationService";
 
-	private LocationManager locationManager;
-	private LocationListener locationListener;
-	private final IBinder mBinder = new LocationServiceBinder();
-	private LocationCallback _questionLocationCallback = null;
-    private LocationCallback _locationItemCallback = null;
-	private Location lastLocation;
+    private LocationListener locationListener;
+    private LocationCallback questionLocationCallback = null;
+    private LocationCallback locationPointCallback = null;
+    private Location lastLocation;
 
-	public class LocationServiceBinder extends Binder {
+    // We can't inject an inner class using Guice
+    private IBinder mBinder = new LocationServiceBinder();
 
-		private final String TAG = "LocationServiceBinder";
+    @Inject LocationManager locationManager;
 
-		LocationService getService() {
+    /**
+     * {@code IBinder} interface used by {@link LocationServiceConnection}
+     * to get a handle on the {@code LocationService} after binding.
+     */
+    public class LocationServiceBinder extends Binder {
 
-			// Verbose
-			if (Config.LOGV) {
-				Log.v(TAG, "[fn] getService");
-			}
+        private String TAG = "LocationServiceBinder";
 
-			// Return this instance of LocationService so clients can call public methods
-			return LocationService.this;
-		}
-	}
+        /**
+         * Get a handle to the bound {@code LocationService}.
+         *
+         * @return Currently bound {@code LocationService}
+         */
+        LocationService getService() {
 
-	public void setLocationItemCallback(LocationCallback callback) {
+            // Verbose
+            if (Config.LOGV) {
+                Log.v(TAG, "[fn] getService");
+            }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] setLocationItemCallback");
-		}
+            // Return this instance of LocationService so clients can call
+            // public methods
+            return LocationService.this;
+        }
 
-		_locationItemCallback = callback;
+    }
 
-		if (lastLocation != null && _locationItemCallback != null) {
-			_locationItemCallback.onLocationReceived(lastLocation);
-		}
-	}
+    /**
+     * Set the {@link com.brainydroid.daydreaming.db.LocationPoint}-tagged
+     * callback for location updates. This callback should be created by
+     * {@link LocationPointService}.
+     *
+     * @param callback Callback to set
+     */
+    public void setLocationPointCallback(LocationCallback callback) {
 
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] setLocationPointCallback");
+        }
+
+        // Set the callback
+        locationPointCallback = callback;
+
+        // If we already received location data, forward it straight away
+        // to the callback.
+        if (lastLocation != null && locationPointCallback != null) {
+            locationPointCallback.onLocationReceived(lastLocation);
+        }
+    }
+
+    /**
+     * Set the {@link com.brainydroid.daydreaming.ui
+     * .QuestionActivity}-tagged callback for location updates. This
+     * callback should be created by {@link com.brainydroid.daydreaming.ui
+     * .QuestionActivity}.
+     *
+     * @param callback Callback to set
+     */
     public void setQuestionLocationCallback(LocationCallback callback) {
 
         // Debug
@@ -60,157 +122,178 @@ public class LocationService extends Service {
             Log.d(TAG, "[fn] setQuestionLocationCallback");
         }
 
-        _questionLocationCallback = callback;
+        // Set the callback
+        questionLocationCallback = callback;
 
-        if (lastLocation != null && _questionLocationCallback != null) {
-            _questionLocationCallback.onLocationReceived(lastLocation);
+        // If we already received location data, forward it straight away
+        // to the callback.
+        if (lastLocation != null && questionLocationCallback != null) {
+            questionLocationCallback.onLocationReceived(lastLocation);
         }
     }
 
-	@Override
-	public void onCreate() {
+    @Override
+    public void onCreate() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onCreate");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onCreate");
+        }
 
-		super.onCreate();
-		initVars();
-		startLocationListener();
-	}
+        super.onCreate();
 
-	@Override
-	public int onStartCommand(Intent intent, int flags, int startId) {
+        // Start listening for location updates
+        startLocationListener();
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onStartCommand");
-		}
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
 
-		super.onStartCommand(intent, flags, startId);
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onStartCommand");
+        }
 
-		return START_REDELIVER_INTENT;
-	}
+        super.onStartCommand(intent, flags, startId);
 
-	@Override
-	public void onDestroy() {
+        // Nothing to do here, the logic is in onCreate
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onDestroy");
-		}
+        return START_REDELIVER_INTENT;
+    }
 
-		stopLocationListenerIfExists();
-		super.onDestroy();
-	}
+    @Override
+    public void onDestroy() {
 
-	@Override
-	public IBinder onBind(Intent intent) {
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onDestroy");
+        }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onBind");
-		}
+        // Stop listening for location updates
+        stopLocationListenerIfExists();
 
-		return mBinder;
-	}
+        super.onDestroy();
+    }
 
-	@Override
-	public void onRebind(Intent intent) {
+    @Override
+    public IBinder onBind(Intent intent) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onRebind");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onBind");
+        }
 
-		super.onRebind(intent);
-	}
+        // Allow binding. Will be used by the LocationServiceConnection.
+        return mBinder;
+    }
 
-	@Override
-	public boolean onUnbind(Intent intent) {
+    @Override
+    public void onRebind(Intent intent) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onUnbind");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onRebind");
+        }
 
-		super.onUnbind(intent);
+        super.onRebind(intent);
+        // This function is for logging purposes. This way we can see
+        // rebinds in the logs.
+    }
 
-        if (_locationItemCallback == null && _questionLocationCallback == null) {
-			stopSelf();
-		}
+    @Override
+    public boolean onUnbind(Intent intent) {
 
-        // Make sur onUnbind is called again if some clients rebind and re-unbind
-		return true;
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onUnbind");
+        }
 
-	private void initVars() {
+        super.onUnbind(intent);
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] initVars");
-		}
+        // If we neither a callback for LocationPointService nor for
+        // QuestionActivity, stop ourselves.
+        if (locationPointCallback == null &&
+                questionLocationCallback == null) {
+            stopSelf();
+        }
 
-		locationManager = (LocationManager)getSystemService(LOCATION_SERVICE);
-	}
+        // Make sure onUnbind is called again if some clients rebind and
+        // re-unbind.
+        return true;
+    }
 
-	private void startLocationListener() {
+    /**
+     * Start listening to location updates. This is done by registering a
+     * {@code LocationListener} on the {@code LocationManager}.
+     */
+    private void startLocationListener() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] updateLocationListener");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] updateLocationListener");
+        }
 
-		stopLocationListenerIfExists();
+        // If we're already listening, stop it and start from scratch to
+        // make sure we have the right callbacks. (Is this really useful?)
+        stopLocationListenerIfExists();
 
-		locationListener = new LocationListener() {
+        locationListener = new LocationListener() {
 
-			private final String TAG = "LocationListener";
+            private String TAG = "LocationListener";
 
-			@Override
-			public void onLocationChanged(Location location) {
+            @Override
+            public void onLocationChanged(Location location) {
 
-				// Debug
-				if (Config.LOGD) {
-					Log.d(TAG, "[fn] (locationListener) onLocationChanged");
-				}
-
-				lastLocation = location;
-
-				if (_locationItemCallback != null) {
-					_locationItemCallback.onLocationReceived(location);
-				}
-
-                if (_questionLocationCallback != null) {
-                    _questionLocationCallback.onLocationReceived(location);
+                // Debug
+                if (Config.LOGD) {
+                    Log.d(TAG, "[fn] (locationListener) onLocationChanged");
                 }
-			}
 
-			@Override
-			public void onStatusChanged(String provider, int status, Bundle extras) {}
+                // Remember location
+                lastLocation = location;
 
-			@Override
-			public void onProviderEnabled(String provider) {}
+                // Send the location data to the LocationPointService
+                if (locationPointCallback != null) {
+                    locationPointCallback.onLocationReceived(location);
+                }
 
-			@Override
-			public void onProviderDisabled(String provider) {}
-		};
+                // Send the location data to the QuestionActivity
+                if (questionLocationCallback != null) {
+                    questionLocationCallback.onLocationReceived(location);
+                }
+            }
 
-		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
-				0, 0, locationListener);
-	}
+            @Override
+            public void onStatusChanged(String provider, int status,
+                                        Bundle extras) {}
 
-	private void stopLocationListenerIfExists() {
+            @Override
+            public void onProviderEnabled(String provider) {}
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] removeLocationListenerIfExists");
-		}
+            @Override
+            public void onProviderDisabled(String provider) {}
 
-		if (locationListener != null) {
-			locationManager.removeUpdates(locationListener);
-			locationListener = null;
-		}
-	}
+        };
+
+        // Register our listener
+        locationManager.requestLocationUpdates(
+                LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+    }
+
+    /**
+     * Stop listening to location updates, if we were listening.
+     */
+    private void stopLocationListenerIfExists() {
+
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] removeLocationListenerIfExists");
+        }
+
+        if (locationListener != null) {
+            locationManager.removeUpdates(locationListener);
+            locationListener = null;
+        }
+    }
+
 }

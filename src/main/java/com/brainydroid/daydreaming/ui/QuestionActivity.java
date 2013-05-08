@@ -1,8 +1,5 @@
 package com.brainydroid.daydreaming.ui;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ComponentName;
@@ -20,433 +17,444 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.actionbarsherlock.app.SherlockDialogFragment;
-import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.brainydroid.daydreaming.R;
 import com.brainydroid.daydreaming.background.LocationCallback;
 import com.brainydroid.daydreaming.background.LocationServiceConnection;
 import com.brainydroid.daydreaming.background.StatusManager;
 import com.brainydroid.daydreaming.background.SyncService;
-import com.brainydroid.daydreaming.db.Poll;
-import com.brainydroid.daydreaming.db.PollsStorage;
-import com.brainydroid.daydreaming.db.Question;
+import com.brainydroid.daydreaming.db.*;
 import com.brainydroid.daydreaming.network.SntpClient;
 import com.brainydroid.daydreaming.network.SntpClientCallback;
+import com.github.rtyley.android.sherlock.roboguice.activity.RoboSherlockFragmentActivity;
+import com.google.inject.Inject;
+import roboguice.inject.ContentView;
+import roboguice.inject.InjectResource;
+import roboguice.inject.InjectView;
 
-public class QuestionActivity extends SherlockFragmentActivity {
+@ContentView(R.layout.activity_question)
+public class QuestionActivity extends RoboSherlockFragmentActivity {
 
-	private static String TAG = "QuestionActivity";
+    private static String TAG = "QuestionActivity";
 
-	public static String EXTRA_POLL_ID = "pollId";
-	public static String EXTRA_QUESTION_INDEX = "questionIndex";
+    public static String EXTRA_POLL_ID = "pollId";
+    public static String EXTRA_QUESTION_INDEX = "questionIndex";
 
-	public static long BACK_REPEAT_DELAY = 2 * 1000; // 2 seconds, in milliseconds
+    public static long BACK_REPEAT_DELAY = 2 * 1000; // 2 seconds, in milliseconds
 
-	private int pollId;
-	private Poll poll;
-	private int questionIndex;
-	private Question question;
-	private int nQuestions;
-	private boolean isContinuingOrFinishing = false;
-	private long lastBackTime = 0;
-	private LinearLayout questionLinearLayout;
-	private StatusManager status;
+    private int pollId;
+    private Poll poll;
+    private int questionIndex;
+    private Question question;
+    private int nQuestions;
+    private boolean isContinuingOrFinishing = false;
+    private long lastBackTime = 0;
+    private IQuestionViewAdapter questionViewAdapter;
 
-	private LocationServiceConnection locationServiceConnection;
+    @InjectView(R.id.question_linearLayout) LinearLayout questionLinearLayout;
+    @InjectView(R.id.question_nextButton) Button nextButton;
+    @InjectResource(R.string.question_button_finish) String nextButtonFinishText;
 
-	public static class LocationAlertDialogFragment extends SherlockDialogFragment {
+    @Inject LocationServiceConnection locationServiceConnection;
+    @Inject PollsStorage pollsStorage;
+    @Inject StatusManager statusManager;
+    @Inject QuestionViewAdapterFactory questionViewAdapterFactory;
 
-		private static String TAG = "LocationAlertDialogFragment";
+    public static class LocationAlertDialogFragment extends SherlockDialogFragment {
 
-		public static LocationAlertDialogFragment newInstance(int title, int text, int posText) {
+        private static String TAG = "LocationAlertDialogFragment";
 
-			// Debug
-			if (Config.LOGD) {
-				Log.d(TAG, "[fn] newInstance");
-			}
+        public static LocationAlertDialogFragment newInstance(int title, int text, int posText) {
 
-			LocationAlertDialogFragment frag = new LocationAlertDialogFragment();
-			Bundle args = new Bundle();
-			args.putInt("title", title);
-			args.putInt("text", text);
-			args.putInt("posText", posText);
-			frag.setArguments(args);
-			return frag;
-		}
+            // Debug
+            if (Config.LOGD) {
+                Log.d(TAG, "[fn] newInstance");
+            }
 
-		@Override
-		public Dialog onCreateDialog(Bundle savedInstanceState) {
+            LocationAlertDialogFragment frag = new LocationAlertDialogFragment();
+            Bundle args = new Bundle();
+            args.putInt("title", title);
+            args.putInt("text", text);
+            args.putInt("posText", posText);
+            frag.setArguments(args);
+            return frag;
+        }
 
-			// Debug
-			if (Config.LOGD) {
-				Log.d(TAG, "[fn] onCreateDialog");
-			}
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
 
-			int title = getArguments().getInt("title");
-			int text = getArguments().getInt("text");
-			int posText = getArguments().getInt("posText");
+            // Debug
+            if (Config.LOGD) {
+                Log.d(TAG, "[fn] onCreateDialog");
+            }
 
-			AlertDialog.Builder alertSettings = new AlertDialog.Builder(getSherlockActivity())
-			.setTitle(title)
-			.setMessage(text)
-			.setPositiveButton(posText,
-					new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog, int whichButton) {
-					((QuestionActivity)getSherlockActivity()).launchSettings();
-				}
-			}).setIcon(Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB ?
-					R.drawable.ic_action_about_holo_light : R.drawable.ic_action_about_holo_dark);
+            int title = getArguments().getInt("title");
+            int text = getArguments().getInt("text");
+            int posText = getArguments().getInt("posText");
 
-			return alertSettings.create();
-		}
-	}
+            AlertDialog.Builder alertSettings = new AlertDialog.Builder(getSherlockActivity())
+            .setTitle(title)
+            .setMessage(text)
+            .setPositiveButton(posText,
+                    new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    ((QuestionActivity)getSherlockActivity()).launchSettings();
+                }
+            }).setIcon(Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB ?
+                    R.drawable.ic_action_about_holo_light : R.drawable.ic_action_about_holo_dark);
 
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
+            return alertSettings.create();
+        }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onCreate");
-		}
+    }
 
-		super.onCreate(savedInstanceState);
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
 
-		setContentView(R.layout.activity_question);
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onCreate");
+        }
 
-		initVars();
-		setChrome();
-		populateViews();
-	}
+        super.onCreate(savedInstanceState);
 
-	@Override
-	public void onStart() {
+        initVars();
+        setChrome();
+        questionViewAdapter.inflate(isFirstQuestion());
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onStart");
-		}
+    @Override
+    public void onStart() {
 
-		super.onStart();
-		poll.setStatus(Poll.STATUS_RUNNING);
-		poll.setQuestionStatus(questionIndex, Question.STATUS_ASKED);
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onStart");
+        }
 
-		if (status.isDataAndLocationEnabled()) {
-			startListeningTasks();
-		}
-	}
+        super.onStart();
 
-	@Override
-	public void onStop() {
+        poll.setStatus(Poll.STATUS_RUNNING);
+        poll.setQuestionStatus(questionIndex, Question.STATUS_ASKED);
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onStop");
-		}
+        if (statusManager.isDataAndLocationEnabled()) {
+            startListeningTasks();
+        }
+    }
 
-		super.onStop();
-		if (!isContinuingOrFinishing) {
-			dismissPoll();
-		}
+    @Override
+    public void onStop() {
+
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onStop");
+        }
+
+        super.onStop();
+        if (!isContinuingOrFinishing) {
+            dismissPoll();
+        }
 
         locationServiceConnection.clearQuestionLocationCallback();
         // the LocationService finishes if nobody else has listeners registered
-		locationServiceConnection.unbindLocationService();
-	}
+        locationServiceConnection.unbindLocationService();
+    }
 
-	@Override
-	public void onBackPressed() {
+    @Override
+    public void onBackPressed() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onBackPressed");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onBackPressed");
+        }
 
-		if (!isRepeatingBack()) {
-			Toast.makeText(this, getString(R.string.questionActivity_catch_key),
-					Toast.LENGTH_SHORT).show();
-			return;
-		}
-		finish();
-		super.onBackPressed();
-	}
+        if (!isRepeatingBack()) {
+            Toast.makeText(this, getString(R.string.questionActivity_catch_key),
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-	private boolean isRepeatingBack() {
+        finish();
+        super.onBackPressed();
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] isRepeatingBack");
-		}
+    private boolean isRepeatingBack() {
 
-		long now = SystemClock.elapsedRealtime();
-		boolean ret = (lastBackTime != 0) && (lastBackTime + BACK_REPEAT_DELAY >= now);
-		lastBackTime = now;
-		return ret;
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] isRepeatingBack");
+        }
 
-	private void initVars() {
+        long now = SystemClock.elapsedRealtime();
+        boolean ret = (lastBackTime != 0) && (lastBackTime + BACK_REPEAT_DELAY >= now);
+        lastBackTime = now;
+        return ret;
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] initVars");
-		}
+    private void initVars() {
 
-		Intent intent = getIntent();
-		PollsStorage pollsStorage = PollsStorage.getInstance(this);
-		pollId = intent.getIntExtra(EXTRA_POLL_ID, -1);
-		poll = pollsStorage.getPoll(pollId);
-		questionIndex = intent.getIntExtra(EXTRA_QUESTION_INDEX, -1);
-		question = poll.getQuestionByIndex(questionIndex);
-		nQuestions = poll.getLength();
-		questionLinearLayout = (LinearLayout)findViewById(R.id.question_linearLayout);
-		status = StatusManager.getInstance(this);
-		locationServiceConnection = new LocationServiceConnection(this);
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] initVars");
+        }
 
-	private void setChrome() {
+        Intent intent = getIntent();
+        pollId = intent.getIntExtra(EXTRA_POLL_ID, -1);
+        poll = pollsStorage.getPoll(pollId);
+        questionIndex = intent.getIntExtra(EXTRA_QUESTION_INDEX, -1);
+        question = poll.getQuestionByIndex(questionIndex);
+        nQuestions = poll.getLength();
+        questionViewAdapter = questionViewAdapterFactory.create(question,
+                questionLinearLayout);
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] setChrome");
-		}
+    private void setChrome() {
 
-		setTitle(getString(R.string.app_name) + " " + (questionIndex + 1) + "/" + nQuestions);
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] setChrome");
+        }
 
-		if (!isFirstQuestion()) {
-			LinearLayout question_linearLayout = (LinearLayout)findViewById(R.id.question_linearLayout);
-			TextView welcomeText = (TextView)question_linearLayout.findViewById(R.id.question_welcomeText);
-			question_linearLayout.removeView(welcomeText);
+        setTitle(getString(R.string.app_name) + " " + (questionIndex + 1) + "/" + nQuestions);
 
-			if (isLastQuestion()) {
-				Button nextButton = (Button)findViewById(R.id.question_nextButton);
-				nextButton.setText(getString(R.string.question_button_finish));
-			}
-		}
-	}
+        if (!isFirstQuestion()) {
+            TextView welcomeText = (TextView)questionLinearLayout.findViewById(R.id.question_welcomeText);
+            questionLinearLayout.removeView(welcomeText);
 
-	private void startListeningTasks() {
+            if (isLastQuestion()) {
+                nextButton.setText(nextButtonFinishText);
+            }
+        }
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] startListeningTasks");
-		}
+    private void startListeningTasks() {
 
-		SntpClientCallback sntpCallback = new SntpClientCallback() {
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] startListeningTasks");
+        }
 
-			private final String TAG = "SntpClientCallback";
+        SntpClientCallback sntpCallback = new SntpClientCallback() {
 
-			public void onTimeReceived(SntpClient sntpClient) {
+            private final String TAG = "SntpClientCallback";
 
-				// Debug
-				if (Config.LOGD) {
-					Log.d(TAG, "[fn] (sntpCallback) onTimeReceived");
-				}
+            public void onTimeReceived(SntpClient sntpClient) {
 
-				if (sntpClient != null) {
-					question.setTimestamp(sntpClient.getNow());
-				}
-			}
+                // Debug
+                if (Config.LOGD) {
+                    Log.d(TAG, "[fn] (sntpCallback) onTimeReceived");
+                }
 
-		};
+                if (sntpClient != null) {
+                    question.setTimestamp(sntpClient.getNow());
+                }
+            }
 
-		SntpClient sntpClient = new SntpClient();
-		sntpClient.asyncRequestTime(sntpCallback);
+        };
 
-		LocationCallback locationCallback = new LocationCallback() {
+        SntpClient sntpClient = new SntpClient();
+        sntpClient.asyncRequestTime(sntpCallback);
 
-			private final String TAG = "LocationCallback";
+        LocationCallback locationCallback = new LocationCallback() {
 
-			public void onLocationReceived(Location location) {
+            private final String TAG = "LocationCallback";
 
-				// Debug
-				if (Config.LOGD) {
-					Log.d(TAG, "[fn] (locationCallback) onLocationReceived");
-				}
+            public void onLocationReceived(Location location) {
 
-				question.setLocation(location);
-			}
+                // Debug
+                if (Config.LOGD) {
+                    Log.d(TAG, "[fn] (locationCallback) onLocationReceived");
+                }
 
-		};
+                question.setLocation(location);
+            }
 
-		locationServiceConnection.setQuestionLocationCallback(locationCallback);
+        };
 
-		if (!status.isLocationServiceRunning()) {
+        locationServiceConnection.setQuestionLocationCallback(locationCallback);
+
+        if (!statusManager.isLocationServiceRunning()) {
             locationServiceConnection.bindLocationService();
             locationServiceConnection.startLocationService();
-		} else {
-			locationServiceConnection.bindLocationService();
-		}
-	}
+        } else {
+            locationServiceConnection.bindLocationService();
+        }
+    }
 
-	private void populateViews() {
+    public void onClick_nextButton(@SuppressWarnings("UnusedParameters") View view) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] populateViews");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onClick_nextButton");
+        }
 
-		ArrayList<View> views = question.createViews(this);
-
-		Iterator<View> vIt = views.iterator();
-		int i = isFirstQuestion() ? 1 : 0;
-		while (vIt.hasNext()) {
-			questionLinearLayout.addView(vIt.next(), i, questionLinearLayout.getLayoutParams());
-			i++;
-		}
-	}
-
-	public void onClick_nextButton(@SuppressWarnings("UnusedParameters") View view) {
-
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onClick_nextButton");
-		}
-
-		if (question.validate(this, questionLinearLayout)) {
+        if (questionViewAdapter.validate()) {
+            questionViewAdapter.saveAnswer();
             poll.setQuestionStatus(questionIndex, Question.STATUS_ANSWERED);
-			poll.saveAnswers(questionLinearLayout, questionIndex);
-			if (isLastQuestion()) {
-				finishPoll();
-			} else {
-				if (status.isDataAndLocationEnabled()) {
-					launchNextQuestion();
-				} else {
-					launchLocationAlertDialog();
-				}
-			}
-		}
-	}
 
-	private void launchLocationAlertDialog() {
+            if (isLastQuestion()) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] launchLocationAlertDialog");
-		}
+                finishPoll();
 
-		int titleId;
-		int textId;
-		if (!status.isNetworkLocEnabled()) {
-			if (!status.isDataEnabled()) {
-				titleId = R.string.locationAlert_title_location_and_data;
-				textId = R.string.locationAlert_text_location_and_data;
-			} else {
-				titleId = R.string.locationAlert_title_location;
-				textId = R.string.locationAlert_text_location;
-			}
-		} else {
-			titleId = R.string.locationAlert_title_data;
-			textId = R.string.locationAlert_text_data;
-		}
+            } else {
 
-		DialogFragment locationAlert = LocationAlertDialogFragment.newInstance(
-				titleId, textId, R.string.locationAlert_button_settings);
-		locationAlert.show(getSupportFragmentManager(), "locationAlert");
-	}
+                if (statusManager.isDataAndLocationEnabled()) {
+                    launchNextQuestion();
+                } else {
+                    launchLocationAlertDialog();
+                }
 
-	private void launchNextQuestion() {
+            }
+        }
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] launchNextQuestion");
-		}
+    private void launchLocationAlertDialog() {
 
-		setIsContinuingOrFinishing();
-		Intent intent = new Intent(this, QuestionActivity.class);
-		intent.putExtra(EXTRA_POLL_ID, pollId);
-		intent.putExtra(EXTRA_QUESTION_INDEX, questionIndex + 1);
-		intent.setFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
-		startActivity(intent);
-		overridePendingTransition(R.anim.push_left_in, R.anim.push_left_out);
-		finish();
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] launchLocationAlertDialog");
+        }
 
-	private void launchSettings() {
+        int titleId;
+        int textId;
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] launchSettings");
-		}
+        if (!statusManager.isNetworkLocEnabled()) {
 
-		Intent settingsIntent;
-		if (!status.isNetworkLocEnabled()) {
-			settingsIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-			settingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
-		} else {
-			settingsIntent = new Intent(Settings.ACTION_DATA_ROAMING_SETTINGS);
-			if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-				ComponentName cName = new ComponentName("com.android.phone", "com.android.phone.Settings");
-				settingsIntent.setComponent(cName);
-			}
-			settingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
-		}
-		startActivity(settingsIntent);
-	}
+            if (!statusManager.isDataEnabled()) {
+                titleId = R.string.locationAlert_title_location_and_data;
+                textId = R.string.locationAlert_text_location_and_data;
+            } else {
+                titleId = R.string.locationAlert_title_location;
+                textId = R.string.locationAlert_text_location;
+            }
 
-	private void dismissPoll() {
+        } else {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] dismissPoll");
-		}
+            titleId = R.string.locationAlert_title_data;
+            textId = R.string.locationAlert_text_data;
 
-		poll.setStatus(Poll.STATUS_PARTIALLY_COMPLETED);
-		poll.setQuestionStatus(questionIndex, Question.STATUS_ASKED_DISMISSED);
-		startSyncService();
-	}
+        }
 
-	private void finishPoll() {
+        DialogFragment locationAlert = LocationAlertDialogFragment.newInstance(
+                titleId, textId, R.string.locationAlert_button_settings);
+        locationAlert.show(getSupportFragmentManager(), "locationAlert");
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] finishPoll");
-		}
+    private void launchNextQuestion() {
 
-		setIsContinuingOrFinishing();
-		Toast.makeText(this, getString(R.string.question_thank_you), Toast.LENGTH_SHORT).show();
-		poll.setStatus(Poll.STATUS_COMPLETED);
-		startSyncService();
-		finish();
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] launchNextQuestion");
+        }
 
-	private boolean isLastQuestion() {
+        setIsContinuingOrFinishing();
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] isLastQuestion");
-		}
+        Intent intent = new Intent(this, QuestionActivity.class);
+        intent.putExtra(EXTRA_POLL_ID, pollId);
+        intent.putExtra(EXTRA_QUESTION_INDEX, questionIndex + 1);
+        intent.setFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+        startActivity(intent);
 
-		return questionIndex == nQuestions - 1;
-	}
+        overridePendingTransition(R.anim.push_left_in, R.anim.push_left_out);
+        finish();
+    }
 
-	private boolean isFirstQuestion() {
+    private void launchSettings() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] isFirstQuestion");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] launchSettings");
+        }
 
-		return questionIndex == 0;
-	}
+        Intent settingsIntent;
 
-	private void setIsContinuingOrFinishing() {
+        if (!statusManager.isNetworkLocEnabled()) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] setIsContinuingOrFinishing");
-		}
+            settingsIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            settingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
 
-		isContinuingOrFinishing = true;
-	}
+        } else {
 
-	private void startSyncService() {
+            settingsIntent = new Intent(Settings.ACTION_DATA_ROAMING_SETTINGS);
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] startSyncService");
-		}
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+                ComponentName cName = new ComponentName("com.android.phone", "com.android.phone.Settings");
+                settingsIntent.setComponent(cName);
+            }
 
-		Intent syncIntent = new Intent(this, SyncService.class);
-		startService(syncIntent);
-	}
+            settingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+        }
+
+        startActivity(settingsIntent);
+    }
+
+    private void dismissPoll() {
+
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] dismissPoll");
+        }
+
+        poll.setStatus(Poll.STATUS_PARTIALLY_COMPLETED);
+        poll.setQuestionStatus(questionIndex, Question.STATUS_ASKED_DISMISSED);
+
+        startSyncService();
+    }
+
+    private void finishPoll() {
+
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] finishPoll");
+        }
+
+        setIsContinuingOrFinishing();
+
+        Toast.makeText(this, getString(R.string.question_thank_you), Toast.LENGTH_SHORT).show();
+        poll.setStatus(Poll.STATUS_COMPLETED);
+
+        startSyncService();
+        finish();
+    }
+
+    private boolean isLastQuestion() {
+
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] isLastQuestion");
+        }
+
+        return questionIndex == nQuestions - 1;
+    }
+
+    private boolean isFirstQuestion() {
+
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] isFirstQuestion");
+        }
+
+        return questionIndex == 0;
+    }
+
+    private void setIsContinuingOrFinishing() {
+
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] setIsContinuingOrFinishing");
+        }
+
+        isContinuingOrFinishing = true;
+    }
+
+    private void startSyncService() {
+
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] startSyncService");
+        }
+
+        Intent syncIntent = new Intent(this, SyncService.class);
+        startService(syncIntent);
+    }
+
 }

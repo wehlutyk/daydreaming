@@ -1,114 +1,83 @@
 package com.brainydroid.daydreaming.ui;
 
 import android.content.Intent;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
-import com.actionbarsherlock.app.SherlockActivity;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
 import com.brainydroid.daydreaming.R;
 import com.brainydroid.daydreaming.background.SchedulerService;
-import com.brainydroid.daydreaming.background.StatusManager;
+import roboguice.inject.ContentView;
 
-public class DashboardActivity extends SherlockActivity {
+@ContentView(R.layout.activity_dashboard)
+public class DashboardActivity extends FirstLaunchActivity {
 
-	private static String TAG = "DashboardActivity";
+    private static String TAG = "DashboardActivity";
 
-	public static String EXTRA_COMES_FROM_FIRST_LAUNCH = "comesFromFirstLaunch";
+    @Override
+    public void onStart() {
 
-	private StatusManager status;
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onStart");
+        }
 
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
-
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onCreate");
-		}
-
-		super.onCreate(savedInstanceState);
-
-		status = StatusManager.getInstance(this);
-
-		setContentView(R.layout.activity_dashboard);
         //updateRunningTime();
+        super.onStart();
     }
 
     // TODO: check this is ok with real ActionBar API
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onCreateOptionsMenu");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onCreateOptionsMenu");
+        }
 
-		MenuInflater menuInflater = getSupportMenuInflater();
-		menuInflater.inflate(R.menu.dashboard, menu);
+        MenuInflater menuInflater = getSupportMenuInflater();
+        menuInflater.inflate(R.menu.dashboard, menu);
 
-		// Calling super after populating the menu is necessary here to ensure that the
-		// action bar helpers have a chance to handle this event.
-		return super.onCreateOptionsMenu(menu);
-	}
+        // Calling super after populating the menu is necessary here to ensure that the
+        // action bar helpers have a chance to handle this event.
+        return super.onCreateOptionsMenu(menu);
+    }
 
-	@Override
-	public void onStart() {
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onStart");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onOptionsItemSelected");
+        }
 
-		checkFirstRun();
-		super.onStart();
-	}
+        switch (item.getItemId()) {
+        case R.id.menu_settings:
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivity(intent);
+            break;
 
-	@Override
-	public void onResume() {
+        // No other cases for now
+        }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onResume");
-		}
+        return super.onOptionsItemSelected(item);
+    }
 
-		super.onResume();
-	}
+    @Override
+    public void onBackPressed() {
 
-	@Override
-	public void onStop() {
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onBackPressed");
+        }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onStop");
-		}
+        super.onBackPressed();
+        // Don't overridePendingTransition
+    }
 
-		super.onStop();
-	}
-
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onOptionsItemSelected");
-		}
-
-		switch (item.getItemId()) {
-		case android.R.id.home:
-			break;
-
-		case R.id.menu_settings:
-			Intent intent = new Intent(this, SettingsActivity.class);
-			startActivity(intent);
-			break;
-		}
-		return super.onOptionsItemSelected(item);
-	}
-
-    // TODO: clean this up
+//    // TODO: clean this up
 //    private void updateRunningTime() {
 //
 //        // Debug
@@ -145,32 +114,34 @@ public class DashboardActivity extends SherlockActivity {
 //        }
 //    }
 
-	private void checkFirstRun() {
+    @Override
+    protected void checkFirstLaunch() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] checkFirstRun");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] checkFirstRun");
+        }
 
-		if (!status.isFirstLaunchCompleted()) {
-			Intent intent = new Intent(this, FirstLaunchWelcomeActivity.class);
-			intent.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
-			startActivity(intent);
-			finish();
-		}
-	}
+        if (!statusManager.isFirstLaunchCompleted()) {
+            Intent intent = new Intent(this, FirstLaunchWelcomeActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+            startActivity(intent);
+            finish();
+        }
+    }
 
-	public void runPollNow(@SuppressWarnings("UnusedParameters") View view) {
+    public void runPollNow(@SuppressWarnings("UnusedParameters") View view) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] runPollNow");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] runPollNow");
+        }
 
-		Intent pollIntent = new Intent(this, SchedulerService.class);
-		pollIntent.putExtra(SchedulerService.SCHEDULER_DEBUGGING, true);
-		startService(pollIntent);
+        Intent pollIntent = new Intent(this, SchedulerService.class);
+        pollIntent.putExtra(SchedulerService.SCHEDULER_DEBUGGING, true);
+        startService(pollIntent);
 
-		Toast.makeText(this, "Now wait for 5 secs", Toast.LENGTH_SHORT).show();
-	}
+        Toast.makeText(this, "Now wait for 5 secs", Toast.LENGTH_SHORT).show();
+    }
+
 }

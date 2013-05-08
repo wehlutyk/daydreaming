@@ -7,7 +7,7 @@
     <artifactId>daydreaming</artifactId>
     <version>0.4+next</version>
     <packaging>apk</packaging>
-    <name>Day Dreaming</name>
+    <name>Daydreaming</name>
 
     <properties>
         <platform.version>4.1.1.4</platform.version>
@@ -90,6 +90,24 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.rtyley</groupId>
+            <artifactId>roboguice-sherlock</artifactId>
+            <version>1.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.inject.extensions</groupId>
+            <artifactId>guice-assistedinject</artifactId>
+            <version>3.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.inject</groupId>
+                    <artifactId>guice</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- Make sure this is below the android dependencies -->
         <dependency>
             <groupId>com.pivotallabs</groupId>
@@ -138,6 +156,17 @@
                     <source>1.6</source>
                     <target>1.6</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.9</version>
+                <configuration>
+                    <doctitle>${project.name} (${project.version})</doctitle>
+                    <subpackages>com.brainydroid.daydreaming.db:com.brainydroid.daydreaming.background:com.brainydroid.daydreaming.network:com.brainydroid.daydreaming.ui</subpackages>
+                    <excludePackageNames>android.support:com.actionbarsherlock:com.brainydroid.daydreaming</excludePackageNames>
                 </configuration>
             </plugin>
         </plugins>

@@ -1,89 +1,118 @@
 package com.brainydroid.daydreaming.db;
 
+import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import com.brainydroid.daydreaming.ui.Config;
+
 import java.io.InputStream;
 import java.util.ArrayList;
 
-import android.util.Log;
-
-import com.brainydroid.daydreaming.ui.Config;
-
 public class Util {
 
-	private static String TAG = "Util";
+    private static String TAG = "Util";
 
-	public static String joinStrings(ArrayList<String> strings, String joinString) {
+//    public static String joinStrings(ArrayList<String> strings, String joinString) {
+//
+//        // Verbose
+//        if (Config.LOGV) {
+//            Log.v(TAG, "[fn] joinStrings");
+//        }
+//
+//        StringBuilder sb = new StringBuilder();
+//
+//        for (String s : strings) {
+//            sb.append(s);
+//            sb.append(joinString);
+//        }
+//
+//        int sbLength = sb.length();
+//        sb.delete(sbLength - joinString.length(), sbLength);
+//        return sb.toString();
+//    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] joinStrings");
-		}
+    public static String multiplyString(String string, int times, String joinString) {
 
-		StringBuilder sb = new StringBuilder();
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] multiplyString");
+        }
 
-		for (String s : strings) {
-			sb.append(s);
-			sb.append(joinString);
-		}
+        StringBuilder sb = new StringBuilder();
 
-		int sbLength = sb.length();
-		sb.delete(sbLength - joinString.length(), sbLength);
-		return sb.toString();
-	}
+        for (int i = 0; i < times; i++) {
+            sb.append(string);
+            sb.append(joinString);
+        }
 
-	public static String multiplyString(String string, int times, String joinString) {
+        int sbLength = sb.length();
+        sb.delete(sbLength - joinString.length(), sbLength);
+        return sb.toString();
+    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] multiplyString");
-		}
+    public static String convertStreamToString(InputStream is) {
 
-		StringBuilder sb = new StringBuilder();
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] convertStreamToString");
+        }
 
-		for (int i = 0; i < times; i++) {
-			sb.append(string);
-			sb.append(joinString);
-		}
+        try {
+            return new java.util.Scanner(is).useDelimiter("\\A").next();
+        } catch (java.util.NoSuchElementException e) {
+            return "";
+        }
+    }
 
-		int sbLength = sb.length();
-		sb.delete(sbLength - joinString.length(), sbLength);
-		return sb.toString();
-	}
+    // hour from string HH:MM
+    public static int getHour(String time) {
 
-	public static String convertStreamToString(InputStream is) {
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] getHour");
+        }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] convertStreamToString");
-		}
+        String[] pieces = time.split(":");
+        return(Integer.parseInt(pieces[0]));
+    }
 
-		try {
-			return new java.util.Scanner(is).useDelimiter("\\A").next();
-		} catch (java.util.NoSuchElementException e) {
-			return "";
-		}
-	}
+    // minutes from string HH:MM
+    public static int getMinute(String time) {
 
-	// hour from string HH:MM
-	public static int getHour(String time) {
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] getMinute");
+        }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] getHour");
-		}
+        String[] pieces = time.split(":");
+        return(Integer.parseInt(pieces[1]));
+    }
 
-		String[] pieces = time.split(":");
-		return(Integer.parseInt(pieces[0]));
-	}
+    // Select questions by tags.
+    // Tags only used to identify subquestions when they exist
+    public static ArrayList<View> getViewsByTag(ViewGroup root, String tag) {
 
-	// minutes from string HH:MM
-	public static int getMinute(String time) {
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] getViewsByTag");
+        }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] getMinute");
-		}
+        ArrayList<View> views = new ArrayList<View>();
+        final int childCount = root.getChildCount();
 
-		String[] pieces = time.split(":");
-		return(Integer.parseInt(pieces[1]));
-	}
+        for (int i = 0; i < childCount; i++) {
+            View child = root.getChildAt(i);
+            if (child instanceof ViewGroup) {
+                views.addAll(getViewsByTag((ViewGroup)child, tag));
+            }
+
+            Object tagObj = child.getTag();
+            if (tagObj != null && tagObj.equals(tag)) {
+                views.add(child);
+            }
+        }
+
+        return views;
+    }
+
 }

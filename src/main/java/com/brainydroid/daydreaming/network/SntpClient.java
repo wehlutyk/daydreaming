@@ -16,19 +16,16 @@
 
 package com.brainydroid.daydreaming.network;
 
+import android.os.AsyncTask;
+import android.os.SystemClock;
+import android.util.Log;
+import com.brainydroid.daydreaming.ui.Config;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
-import android.os.AsyncTask;
-import android.os.SystemClock;
-import android.util.Log;
-
-import com.brainydroid.daydreaming.ui.Config;
-
 /**
- * {@hide}
- *
  * Simple SNTP client class for retrieving network time.
  *
  * Sample usage:
@@ -39,280 +36,295 @@ import com.brainydroid.daydreaming.ui.Config;
  * </pre>
  */
 public class SntpClient {
-	private static final String TAG = "SntpClient";
 
-	private static final int ORIGINATE_TIME_OFFSET = 24;
-	private static final int RECEIVE_TIME_OFFSET = 32;
-	private static final int TRANSMIT_TIME_OFFSET = 40;
-	private static final int NTP_PACKET_SIZE = 48;
+    private static final String TAG = "SntpClient";
 
-	private static final int NTP_PORT = 123;
-	private static final int NTP_MODE_CLIENT = 3;
-	private static final int NTP_VERSION = 3;
+    private static final int NETWORK_TIMEOUT = 30 * 1000; // 30 secs (in ms)
 
-	// Number of seconds between Jan 1, 1900 and Jan 1, 1970
-	// 70 years plus 17 leap days
-	private static final long OFFSET_1900_TO_1970 = ((365L * 70L) + 17L) * 24L * 60L * 60L;
+    private static final int ORIGINATE_TIME_OFFSET = 24;
+    private static final int RECEIVE_TIME_OFFSET = 32;
+    private static final int TRANSMIT_TIME_OFFSET = 40;
+    private static final int NTP_PACKET_SIZE = 48;
 
-	// system time computed from NTP server response
-	private long mNtpTime;
+    private static final int NTP_PORT = 123;
+    private static final int NTP_MODE_CLIENT = 3;
+    private static final int NTP_VERSION = 3;
 
-	// value of SystemClock.elapsedRealtime() corresponding to mNtpTime
-	private long mNtpTimeReference;
+    // Number of seconds between Jan 1, 1900 and Jan 1, 1970
+    // 70 years plus 17 leap days
+    private static final long OFFSET_1900_TO_1970 = ((365L * 70L) + 17L) * 24L * 60L * 60L;
 
-	// round trip time in milliseconds
-	private long mRoundTripTime;
+    // system time computed from NTP server response
+    private long mNtpTime;
 
-	private class RequestTimeTask extends AsyncTask<SntpClient, Integer, SntpClient> {
+    // value of SystemClock.elapsedRealtime() corresponding to mNtpTime
+    private long mNtpTimeReference;
 
-		private final String TAG = "RequestTimeTask";
+    // round trip time in milliseconds
+    private long mRoundTripTime;
 
-		private SntpClientCallback _callback = null;
+    private class RequestTimeTask extends AsyncTask<SntpClient, Integer, SntpClient> {
 
-		protected void setSntpClientCallback(SntpClientCallback callback) {
+        private final String TAG = "RequestTimeTask";
 
-			// Verbose
-			if (Config.LOGV) {
-				Log.v(TAG, "[fn] setSntpClientCallback");
-			}
+        private SntpClientCallback callback = null;
 
-			_callback = callback;
-		}
+        protected void setSntpClientCallback(SntpClientCallback callback) {
 
-		@Override
-		protected SntpClient doInBackground(SntpClient... sntpClients) {
+            // Verbose
+            if (Config.LOGV) {
+                Log.v(TAG, "[fn] setSntpClientCallback");
+            }
 
-			// Debug
-			if (Config.LOGD) {
-				Log.d(TAG, "[fn] doInBackground");
-			}
+            this.callback = callback;
+        }
 
-			SntpClient sntpClient = sntpClients[0];
-			if (sntpClient.requestTime("0.pool.ntp.org", 5000)) {
-				return sntpClient;
-			}
-			return null;
-		}
+        @Override
+        protected SntpClient doInBackground(SntpClient... sntpClients) {
 
-		@Override
-		protected void onPostExecute(SntpClient sntpClient) {
+            // Debug
+            if (Config.LOGD) {
+                Log.d(TAG, "[fn] doInBackground");
+            }
 
-			// Debug
-			if (Config.LOGD) {
-				Log.d(TAG, "[fn] onPostExecute");
-			}
+            SntpClient sntpClient = sntpClients[0];
+            if (sntpClient.requestTime("0.pool.ntp.org", NETWORK_TIMEOUT)) {
+                return sntpClient;
+            }
 
-			_callback.onTimeReceived(sntpClient);
-		}
-	}
+            return null;
+        }
 
-	/**
-	 * Sends an SNTP request to the given host and processes the response.
-	 *
-	 * @param host host name of the server.
-	 * @param timeout network timeout in milliseconds.
-	 * @return true if the transaction was successful.
-	 */
-	private boolean requestTime(String host, int timeout) {
+        @Override
+        protected void onPostExecute(SntpClient sntpClient) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] requestTime");
-		}
+            // Debug
+            if (Config.LOGD) {
+                Log.d(TAG, "[fn] onPostExecute");
+            }
 
-		try {
-			DatagramSocket socket = new DatagramSocket();
-			socket.setSoTimeout(timeout);
-			InetAddress address = InetAddress.getByName(host);
-			byte[] buffer = new byte[NTP_PACKET_SIZE];
-			DatagramPacket request = new DatagramPacket(buffer, buffer.length, address, NTP_PORT);
+            callback.onTimeReceived(sntpClient);
+        }
+    }
 
-			// set mode = 3 (client) and version = 3
-			// mode is in low 3 bits of first byte
-			// version is in bits 3-5 of first byte
-			buffer[0] = NTP_MODE_CLIENT | (NTP_VERSION << 3);
+    /**
+     * Sends an SNTP request to the given host and processes the response.
+     *
+     * @param host host name of the server.
+     * @param timeout network timeout in milliseconds.
+     * @return true if the transaction was successful.
+     */
+    private boolean requestTime(String host, int timeout) {
 
-			// get current time and write it to the request packet
-			long requestTime = System.currentTimeMillis();
-			long requestTicks = SystemClock.elapsedRealtime();
-			writeTimeStamp(buffer, TRANSMIT_TIME_OFFSET, requestTime);
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] requestTime");
+        }
 
-			socket.send(request);
+        try {
+            DatagramSocket socket = new DatagramSocket();
+            socket.setSoTimeout(timeout);
+            InetAddress address = InetAddress.getByName(host);
+            byte[] buffer = new byte[NTP_PACKET_SIZE];
+            DatagramPacket request = new DatagramPacket(buffer, buffer.length, address, NTP_PORT);
 
-			// read the response
-			DatagramPacket response = new DatagramPacket(buffer, buffer.length);
-			socket.receive(response);
-			long responseTicks = SystemClock.elapsedRealtime();
-			long responseTime = requestTime + (responseTicks - requestTicks);
-			socket.close();
+            // set mode = 3 (client) and version = 3
+            // mode is in low 3 bits of first byte
+            // version is in bits 3-5 of first byte
+            buffer[0] = NTP_MODE_CLIENT | (NTP_VERSION << 3);
 
-			// extract the results
-			long originateTime = readTimeStamp(buffer, ORIGINATE_TIME_OFFSET);
-			long receiveTime = readTimeStamp(buffer, RECEIVE_TIME_OFFSET);
-			long transmitTime = readTimeStamp(buffer, TRANSMIT_TIME_OFFSET);
-			long roundTripTime = responseTicks - requestTicks - (transmitTime - receiveTime);
-			// receiveTime = originateTime + transit + skew
-			// responseTime = transmitTime + transit - skew
-			// clockOffset = ((receiveTime - originateTime) + (transmitTime - responseTime))/2
-			//             = ((originateTime + transit + skew - originateTime) +
-			//                (transmitTime - (transmitTime + transit - skew)))/2
-			//             = ((transit + skew) + (transmitTime - transmitTime - transit + skew))/2
-			//             = (transit + skew - transit + skew)/2
-			//             = (2 * skew)/2 = skew
-			long clockOffset = ((receiveTime - originateTime) + (transmitTime - responseTime))/2;
-			// if (Config.LOGD) if (Config.LOGD) Log.d(TAG, "round trip: " + roundTripTime + " ms");
-			// if (Config.LOGD) if (Config.LOGD) Log.d(TAG, "clock offset: " + clockOffset + " ms");
+            // get current time and write it to the request packet
+            long requestTime = System.currentTimeMillis();
+            long requestTicks = SystemClock.elapsedRealtime();
+            writeTimeStamp(buffer, TRANSMIT_TIME_OFFSET, requestTime);
 
-			// save our results - use the times on this side of the network latency
-			// (response rather than request time)
-			mNtpTime = responseTime + clockOffset;
-			mNtpTimeReference = responseTicks;
-			mRoundTripTime = roundTripTime;
-		} catch (Exception e) {
-			if (Config.LOGD) {
-				Log.d(TAG, "request time failed: " + e);
-			}
-			return false;
-		}
+            socket.send(request);
 
-		return true;
-	}
+            // read the response
+            DatagramPacket response = new DatagramPacket(buffer, buffer.length);
+            socket.receive(response);
+            long responseTicks = SystemClock.elapsedRealtime();
+            long responseTime = requestTime + (responseTicks - requestTicks);
+            socket.close();
 
-	public void asyncRequestTime(SntpClientCallback callback) {
+            // extract the results
+            long originateTime = readTimeStamp(buffer, ORIGINATE_TIME_OFFSET);
+            long receiveTime = readTimeStamp(buffer, RECEIVE_TIME_OFFSET);
+            long transmitTime = readTimeStamp(buffer, TRANSMIT_TIME_OFFSET);
+            long roundTripTime = responseTicks - requestTicks - (transmitTime - receiveTime);
+            // receiveTime = originateTime + transit + skew
+            // responseTime = transmitTime + transit - skew
+            // clockOffset = ((receiveTime - originateTime) + (transmitTime - responseTime))/2
+            //             = ((originateTime + transit + skew - originateTime) +
+            //                (transmitTime - (transmitTime + transit - skew)))/2
+            //             = ((transit + skew) + (transmitTime - transmitTime - transit + skew))/2
+            //             = (transit + skew - transit + skew)/2
+            //             = (2 * skew)/2 = skew
+            long clockOffset = ((receiveTime - originateTime) + (transmitTime - responseTime))/2;
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] asyncRequestTime");
-		}
+            // Debug
+            if (Config.LOGD) {
+                Log.d(TAG, "round trip: " + roundTripTime + " ms");
+                Log.d(TAG, "clock offset: " + clockOffset + " ms");
+            }
 
-		RequestTimeTask requestTask = new RequestTimeTask();
-		requestTask.setSntpClientCallback(callback);
-		requestTask.execute(this);
-	}
+            // save our results - use the times on this side of the network latency
+            // (response rather than request time)
+            mNtpTime = responseTime + clockOffset;
+            mNtpTimeReference = responseTicks;
+            mRoundTripTime = roundTripTime;
 
-	public long getNow() {
+        } catch (Exception e) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] getNow");
-		}
+            if (Config.LOGD) {
+                Log.d(TAG, "request time failed: " + e);
+            }
 
-		return getNtpTime() + SystemClock.elapsedRealtime() - getNtpTimeReference();
-	}
+            return false;
+        }
 
-	/**
-	 * Returns the time computed from the NTP transaction.
-	 *
-	 * @return time value computed from NTP server response.
-	 */
-	public long getNtpTime() {
+        return true;
+    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] getNtpTime");
-		}
+    public void asyncRequestTime(SntpClientCallback callback) {
 
-		return mNtpTime;
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] asyncRequestTime");
+        }
 
-	/**
-	 * Returns the reference clock value (value of SystemClock.elapsedRealtime())
-	 * corresponding to the NTP time.
-	 *
-	 * @return reference clock corresponding to the NTP time.
-	 */
-	public long getNtpTimeReference() {
+        RequestTimeTask requestTask = new RequestTimeTask();
+        requestTask.setSntpClientCallback(callback);
+        requestTask.execute(this);
+    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] getNtpTimeReference");
-		}
+    public long getNow() {
 
-		return mNtpTimeReference;
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] getNow");
+        }
 
-	/**
-	 * Returns the round trip time of the NTP transaction
-	 *
-	 * @return round trip time in milliseconds.
-	 */
-	public long getRoundTripTime() {
+        return getNtpTime() + SystemClock.elapsedRealtime() - getNtpTimeReference();
+    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] getRoundTripTime");
-		}
+    /**
+     * Returns the time computed from the NTP transaction.
+     *
+     * @return time value computed from NTP server response.
+     */
+    public long getNtpTime() {
 
-		return mRoundTripTime;
-	}
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] getNtpTime");
+        }
 
-	/**
-	 * Reads an unsigned 32 bit big endian number from the given offset in the buffer.
-	 */
-	private long read32(byte[] buffer, int offset) {
+        return mNtpTime;
+    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] read32");
-		}
+    /**
+     * Returns the reference clock value (value of SystemClock.elapsedRealtime())
+     * corresponding to the NTP time.
+     *
+     * @return reference clock corresponding to the NTP time.
+     */
+    public long getNtpTimeReference() {
 
-		byte b0 = buffer[offset];
-		byte b1 = buffer[offset+1];
-		byte b2 = buffer[offset+2];
-		byte b3 = buffer[offset+3];
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] getNtpTimeReference");
+        }
 
-		// convert signed bytes to unsigned values
-		int i0 = ((b0 & 0x80) == 0x80 ? (b0 & 0x7F) + 0x80 : b0);
-		int i1 = ((b1 & 0x80) == 0x80 ? (b1 & 0x7F) + 0x80 : b1);
-		int i2 = ((b2 & 0x80) == 0x80 ? (b2 & 0x7F) + 0x80 : b2);
-		int i3 = ((b3 & 0x80) == 0x80 ? (b3 & 0x7F) + 0x80 : b3);
+        return mNtpTimeReference;
+    }
 
-		return ((long)i0 << 24) + ((long)i1 << 16) + ((long)i2 << 8) + i3;
-	}
+    /**
+     * Returns the round trip time of the NTP transaction
+     *
+     * @return round trip time in milliseconds.
+     */
+    @SuppressWarnings("UnusedDeclaration")
+    public long getRoundTripTime() {
 
-	/**
-	 * Reads the NTP time stamp at the given offset in the buffer and returns
-	 * it as a system time (milliseconds since January 1, 1970).
-	 */
-	private long readTimeStamp(byte[] buffer, int offset) {
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] getRoundTripTime");
+        }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] readTimeStamp");
-		}
+        return mRoundTripTime;
+    }
 
-		long seconds = read32(buffer, offset);
-		long fraction = read32(buffer, offset + 4);
-		return ((seconds - OFFSET_1900_TO_1970) * 1000) + ((fraction * 1000L) / 0x100000000L);
-	}
+    /**
+     * Reads an unsigned 32 bit big endian number from the given offset in the buffer.
+     */
+    private long read32(byte[] buffer, int offset) {
 
-	/**
-	 * Writes system time (milliseconds since January 1, 1970) as an NTP time stamp
-	 * at the given offset in the buffer.
-	 */
-	private void writeTimeStamp(byte[] buffer, int offset, long time) {
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] read32");
+        }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] writeTimeStamp");
-		}
+        byte b0 = buffer[offset];
+        byte b1 = buffer[offset+1];
+        byte b2 = buffer[offset+2];
+        byte b3 = buffer[offset+3];
 
-		long seconds = time / 1000L;
-		long milliseconds = time - seconds * 1000L;
-		seconds += OFFSET_1900_TO_1970;
+        // convert signed bytes to unsigned values
+        int i0 = ((b0 & 0x80) == 0x80 ? (b0 & 0x7F) + 0x80 : b0);
+        int i1 = ((b1 & 0x80) == 0x80 ? (b1 & 0x7F) + 0x80 : b1);
+        int i2 = ((b2 & 0x80) == 0x80 ? (b2 & 0x7F) + 0x80 : b2);
+        int i3 = ((b3 & 0x80) == 0x80 ? (b3 & 0x7F) + 0x80 : b3);
 
-		// write seconds in big endian format
-		buffer[offset++] = (byte)(seconds >> 24);
-		buffer[offset++] = (byte)(seconds >> 16);
-		buffer[offset++] = (byte)(seconds >> 8);
-		buffer[offset++] = (byte)(seconds >> 0);
+        return ((long)i0 << 24) + ((long)i1 << 16) + ((long)i2 << 8) + i3;
+    }
 
-		long fraction = milliseconds * 0x100000000L / 1000L;
-		// write fraction in big endian format
-		buffer[offset++] = (byte)(fraction >> 24);
-		buffer[offset++] = (byte)(fraction >> 16);
-		buffer[offset++] = (byte)(fraction >> 8);
-		// low order bits should be random data
-		buffer[offset++] = (byte)(Math.random() * 255.0);
-	}
+    /**
+     * Reads the NTP time stamp at the given offset in the buffer and returns
+     * it as a system time (milliseconds since January 1, 1970).
+     */
+    private long readTimeStamp(byte[] buffer, int offset) {
+
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] readTimeStamp");
+        }
+
+        long seconds = read32(buffer, offset);
+        long fraction = read32(buffer, offset + 4);
+        return ((seconds - OFFSET_1900_TO_1970) * 1000) + ((fraction * 1000L) / 0x100000000L);
+    }
+
+    /**
+     * Writes system time (milliseconds since January 1, 1970) as an NTP time stamp
+     * at the given offset in the buffer.
+     */
+    private void writeTimeStamp(byte[] buffer, int offset, long time) {
+
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] writeTimeStamp");
+        }
+
+        long seconds = time / 1000L;
+        long milliseconds = time - seconds * 1000L;
+        seconds += OFFSET_1900_TO_1970;
+
+        // write seconds in big endian format
+        buffer[offset++] = (byte)(seconds >> 24);
+        buffer[offset++] = (byte)(seconds >> 16);
+        buffer[offset++] = (byte)(seconds >> 8);
+        //noinspection PointlessBitwiseExpression
+        buffer[offset++] = (byte)(seconds >> 0);
+
+        long fraction = milliseconds * 0x100000000L / 1000L;
+        // write fraction in big endian format
+        buffer[offset++] = (byte)(fraction >> 24);
+        buffer[offset++] = (byte)(fraction >> 16);
+        buffer[offset++] = (byte)(fraction >> 8);
+        // low order bits should be random data
+        //noinspection UnusedAssignment
+        buffer[offset++] = (byte)(Math.random() * 255.0);
+    }
+
 }

@@ -6,6 +6,9 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpConnectionParams;
+import org.apache.http.params.HttpParams;
 import org.apache.http.util.EntityUtils;
 
 import android.os.AsyncTask;
@@ -15,67 +18,69 @@ import com.brainydroid.daydreaming.ui.Config;
 
 public class HttpPostTask extends AsyncTask<HttpPostData, Void, Boolean> {
 
-	private static String TAG = "HttpPostTask";
+    private static String TAG = "HttpPostTask";
 
-	private HttpClient client;
-	private String serverAnswer;
-	private HttpPostData postData;
-	private HttpPost httpPost;
-	private StringEntity stringEntity;
-	private HttpResponse response;
-	private HttpEntity resEntity;
-	private HttpConversationCallback httpConversationCallback;
+    private HttpClient client;
+    private String serverAnswer;
+    private HttpConversationCallback httpConversationCallback;
 
-	@Override
-	protected void onPreExecute() {
+    @Override
+    protected void onPreExecute() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onPreExecute");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onPreExecute");
+        }
 
-		client = new DefaultHttpClient();
-	}
+        HttpParams httpParams = new BasicHttpParams();
+        HttpConnectionParams.setConnectionTimeout(httpParams,
+                ServerConfig.HTTP_TIMEOUT);
+        client = new DefaultHttpClient(httpParams);
+    }
 
-	@Override
-	protected Boolean doInBackground(HttpPostData... postDatas) {
+    @Override
+    protected Boolean doInBackground(HttpPostData... postDatas) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] doInBackground");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] doInBackground");
+        }
 
-		try {
-			postData = postDatas[0];
-			httpConversationCallback = postData.getHttpConversationCallback();
-			httpPost = new HttpPost(postData.getPostUrl());
-			stringEntity = new StringEntity(postData.getPostString());
+        try {
+            HttpPostData postData = postDatas[0];
+            httpConversationCallback = postData.getHttpConversationCallback();
+            HttpPost httpPost = new HttpPost(postData.getPostUrl());
+            StringEntity stringEntity = new StringEntity(postData.getPostString());
 
-			httpPost.setHeader("Content-Type", postData.getContentType());
-			httpPost.setEntity(stringEntity);
+            httpPost.setHeader("Content-Type", postData.getContentType());
+            httpPost.setEntity(stringEntity);
 
-			response = client.execute(httpPost);
-			resEntity = response.getEntity();
+            HttpResponse response = client.execute(httpPost);
+            HttpEntity resEntity = response.getEntity();
 
-			if (resEntity != null) {
-				serverAnswer = EntityUtils.toString(resEntity);
-			}
-		} catch (Exception e) {
-			serverAnswer = null;
-			return false;
-		}
+            if (resEntity != null) {
+                serverAnswer = EntityUtils.toString(resEntity);
+            }
+        } catch (Exception e) {
+            // FIXME: properly inform about errors that happen
+            serverAnswer = null;
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	@Override
-	protected void onPostExecute(Boolean success) {
+    @Override
+    protected void onPostExecute(Boolean success) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onPostExecute");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onPostExecute");
+        }
 
-		httpConversationCallback.onHttpConversationFinished(success, serverAnswer);
-	}
+        if (httpConversationCallback != null) {
+            httpConversationCallback.onHttpConversationFinished(success, serverAnswer);
+        }
+    }
+
 }

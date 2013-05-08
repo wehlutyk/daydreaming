@@ -1,266 +1,234 @@
 package com.brainydroid.daydreaming.network;
 
+import android.util.Log;
+import com.brainydroid.daydreaming.ui.Config;
+import com.google.inject.Singleton;
+import org.spongycastle.jce.ECNamedCurveTable;
+import org.spongycastle.util.encoders.Base64;
+import org.spongycastle.util.encoders.UrlBase64;
+
 import java.io.UnsupportedEncodingException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.Security;
-import java.security.Signature;
-import java.security.SignatureException;
+import java.security.*;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Enumeration;
 
-import org.spongycastle.jce.ECNamedCurveTable;
-import org.spongycastle.util.encoders.Base64;
-import org.spongycastle.util.encoders.Hex;
-
-import android.util.Log;
-
-import com.brainydroid.daydreaming.ui.Config;
-
+@Singleton
 public class Crypto {
 
-	private static String TAG = "Crypto";
+    private static String TAG = "Crypto";
 
-	private static final String PROVIDER = "SC";
-	private static final String KEYGEN_ALG = "ECDSA";
-	private static final String SIGN_ALG = "SHA256withECDSA";
+    private static final String PROVIDER = "SC";
+    private static final String KEYGEN_ALG = "ECDSA";
+    private static final String SIGN_ALG = "SHA256withECDSA";
 
-	private static final String BEGIN_KEY_BLOCK = "-----BEGIN PUBLIC KEY-----";
-	private static final String END_KEY_BLOCK = "-----END PUBLIC KEY-----";
-	private static final int LINEWIDTH = 64;
+    private static final String BEGIN_KEY_BLOCK = "-----BEGIN PUBLIC KEY-----";
+    private static final String END_KEY_BLOCK = "-----END PUBLIC KEY-----";
+    private static final int LINEWIDTH = 64;
 
-	private static Crypto cInstance;
+    private KeyFactory kf;
+    private KeyPairGenerator kpg;
+    private Signature sg;
 
-	static {
-		Security.addProvider(new org.spongycastle.jce.provider.BouncyCastleProvider());
-	}
+    static {
+        Security.addProvider(new org.spongycastle.jce.provider.BouncyCastleProvider());
+    }
 
-	private KeyFactory kf;
-	private KeyPairGenerator kpg;
-	private Signature sg;
+    public Crypto() {
 
-	public static synchronized Crypto getInstance() {
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] Crypto");
+        }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] getInstance");
-		}
+        try {
+            kf = KeyFactory.getInstance(KEYGEN_ALG, PROVIDER);
+            kpg = KeyPairGenerator.getInstance(KEYGEN_ALG, PROVIDER);
+            sg = Signature.getInstance(SIGN_ALG, PROVIDER);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchProviderException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-		if (cInstance == null) {
-			cInstance = new Crypto();
-		}
+    @SuppressWarnings("UnusedDeclaration")
+    public synchronized Enumeration<String> getAvailableCurveNames() {
 
-		return cInstance;
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] getAvailableCurveNames");
+        }
 
-	private Crypto() {
+        //noinspection unchecked
+        return ECNamedCurveTable.getNames();
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] Crypto");
-		}
+    public synchronized KeyPair generateKeyPairNamedCurve(String curveName) {
 
-		try {
-			kf = KeyFactory.getInstance(KEYGEN_ALG, PROVIDER);
-			kpg = KeyPairGenerator.getInstance(KEYGEN_ALG, PROVIDER);
-			sg = Signature.getInstance(SIGN_ALG, PROVIDER);
-		} catch (NoSuchAlgorithmException e) {
-			throw new RuntimeException(e);
-		} catch (NoSuchProviderException e) {
-			throw new RuntimeException(e);
-		}
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] generateKeyPairNamedCurve");
+        }
 
-	@SuppressWarnings("unchecked")
-	public synchronized Enumeration<String> getAvailableCurveNames() {
+        try {
+            ECGenParameterSpec ecParamSpec = new ECGenParameterSpec(curveName);
+            kpg.initialize(ecParamSpec);
+        } catch (InvalidAlgorithmParameterException e) {
+            throw new RuntimeException(e);
+        }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] getAvailableCurveNames");
-		}
+        return kpg.generateKeyPair();
+    }
 
-		return ECNamedCurveTable.getNames();
-	}
+    @SuppressWarnings("UnusedDeclaration")
+    public synchronized PublicKey readPublicKey(String keyStr) throws InvalidKeySpecException {
 
-	public synchronized KeyPair generateKeyPairNamedCurve(String curveName) {
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] readPublicKey (from String)");
+        }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] generateKeyPairNamedCurve");
-		}
+        X509EncodedKeySpec x509ks = new X509EncodedKeySpec(
+                Base64.decode(keyStr));
+        return kf.generatePublic(x509ks);
+    }
 
-		try {
-			ECGenParameterSpec ecParamSpec = new ECGenParameterSpec(curveName);
-			kpg.initialize(ecParamSpec);
-		} catch (InvalidAlgorithmParameterException e) {
-			throw new RuntimeException(e);
-		}
+    @SuppressWarnings("UnusedDeclaration")
+    public synchronized PublicKey readPublicKey(byte[] key) throws InvalidKeySpecException {
 
-		return kpg.generateKeyPair();
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] readPublicKey (from byte[])");
+        }
 
-	public static String base64Encode(byte[] b) {
+        X509EncodedKeySpec x509ks = new X509EncodedKeySpec(key);
+        return kf.generatePublic(x509ks);
+    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] base64Encode");
-		}
+    public synchronized PrivateKey readPrivateKey(String keyStr) throws InvalidKeySpecException {
 
-		try {
-			return new String(Base64.encode(b), "ASCII");
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException(e);
-		}
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] readPrivateKey (from String)");
+        }
 
-	public static String hex(byte[] bytes) {
+        PKCS8EncodedKeySpec p8ks = new PKCS8EncodedKeySpec(
+                Base64.decode(keyStr));
+        return kf.generatePrivate(p8ks);
+    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] hex");
-		}
+    public synchronized PrivateKey readPrivateKey(byte[] key) throws InvalidKeySpecException {
 
-		try {
-			return new String(Hex.encode(bytes), "ASCII");
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException(e);
-		}
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] readPrivateKey (from byte[])");
+        }
 
-	public static byte[] base64Decode(String str) {
+        PKCS8EncodedKeySpec p8ks = new PKCS8EncodedKeySpec(key);
+        return kf.generatePrivate(p8ks);
+    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] base64Decode");
-		}
+    @SuppressWarnings("UnusedDeclaration")
+    public synchronized KeyPair readKeyPair(String pubKeyStr, String privKeyStr) throws InvalidKeySpecException {
 
-		return Base64.decode(str);
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] readKeyPair (from String, String)");
+        }
 
-	public synchronized PublicKey readPublicKey(String keyStr) throws InvalidKeySpecException {
+        return new KeyPair(readPublicKey(pubKeyStr), readPrivateKey(privKeyStr));
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] readPublicKey (from String)");
-		}
+    @SuppressWarnings("UnusedDeclaration")
+    public synchronized KeyPair readKeyPair(byte[] pubKey, byte[] privKey) throws InvalidKeySpecException {
 
-		X509EncodedKeySpec x509ks = new X509EncodedKeySpec(
-				Base64.decode(keyStr));
-		return kf.generatePublic(x509ks);
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] readKeyPair (from byte[], byte[])");
+        }
 
-	public synchronized PublicKey readPublicKey(byte[] key) throws InvalidKeySpecException {
+        return new KeyPair(readPublicKey(pubKey), readPrivateKey(privKey));
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] readPublicKey (from byte[])");
-		}
+    public synchronized byte[] sign(PrivateKey privateKey, byte[] data)
+            throws InvalidKeyException {
 
-		X509EncodedKeySpec x509ks = new X509EncodedKeySpec(key);
-		return kf.generatePublic(x509ks);
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] sign");
+        }
 
-	public synchronized PrivateKey readPrivateKey(String keyStr) throws InvalidKeySpecException {
+        try {
+            sg.initSign(privateKey);
+            sg.update(data);
+            return sg.sign();
+        } catch (SignatureException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] readPrivateKey (from String)");
-		}
+    private static String wrapString(String str, int lineWidth) {
 
-		PKCS8EncodedKeySpec p8ks = new PKCS8EncodedKeySpec(
-				Base64.decode(keyStr));
-		return kf.generatePrivate(p8ks);
-	}
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] wrapString");
+        }
 
-	public synchronized PrivateKey readPrivateKey(byte[] key) throws InvalidKeySpecException {
+        if (str.length() <= lineWidth) {
+            return str;
+        } else {
+            return str.substring(0, lineWidth) + "\n" + wrapString(str.substring(lineWidth), lineWidth);
+        }
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] readPrivateKey (from byte[])");
-		}
+    private static String formatKeyString(String keyString) {
 
-		PKCS8EncodedKeySpec p8ks = new PKCS8EncodedKeySpec(key);
-		return kf.generatePrivate(p8ks);
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] formatKeyString");
+        }
 
-	public synchronized KeyPair readKeyPair(String pubKeyStr, String privKeyStr) throws InvalidKeySpecException {
+        return BEGIN_KEY_BLOCK + "\n" + wrapString(keyString, LINEWIDTH) + "\n" + END_KEY_BLOCK + "\n";
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] readKeyPair (from String, String)");
-		}
+    public static String armorPublicKey(PublicKey publicKey) {
 
-		return new KeyPair(readPublicKey(pubKeyStr), readPrivateKey(privKeyStr));
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] armorPublicKey");
+        }
 
-	public synchronized KeyPair readKeyPair(byte[] pubKey, byte[] privKey) throws InvalidKeySpecException {
+        return formatKeyString(base64Encode(publicKey.getEncoded()));
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] readKeyPair (from byte[], byte[])");
-		}
+    public static String base64Encode(byte[] b) {
 
-		return new KeyPair(readPublicKey(pubKey), readPrivateKey(privKey));
-	}
+        // Verbose
+        if (Config.LOGV) {
+            Log.v(TAG, "[fn] base64Encode");
+        }
 
-	private static String wrapString(String str, int lineWidth) {
+        try {
+            return new String(Base64.encode(b), "ASCII");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-		// Verbose
-		if (Config.LOGV) {
-			Log.v(TAG, "[fn] wrapString");
-		}
+    public static String base64urlEncode(byte[] data) {
 
-		if (str.length() <= lineWidth) {
-			return str;
-		} else {
-			return str.substring(0, lineWidth) + "\n" + wrapString(str.substring(lineWidth), lineWidth);
-		}
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] base64urlEncode");
+        }
 
-	private static String formatKeyString(String keyString) {
+        String padded_b64url = new String(UrlBase64.encode(data));
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] formatKeyString");
-		}
+        // Remove padding
+        return padded_b64url.replace(".", "");
+    }
 
-		return BEGIN_KEY_BLOCK + "\n" + wrapString(keyString, LINEWIDTH) + "\n" + END_KEY_BLOCK + "\n";
-	}
-
-	public static String armorPublicKey(PublicKey publicKey) {
-
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] armorPublicKey");
-		}
-
-		return formatKeyString(base64Encode(publicKey.getEncoded()));
-	}
-
-	public synchronized byte[] sign(PrivateKey privateKey, byte[] data)
-			throws InvalidKeyException {
-
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] sign");
-		}
-
-		try {
-			sg.initSign(privateKey);
-			sg.update(data);
-			return sg.sign();
-		} catch (SignatureException e) {
-			throw new RuntimeException(e);
-		}
-	}
 }

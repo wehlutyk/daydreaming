@@ -2,133 +2,194 @@ package com.brainydroid.daydreaming.background;
 
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.Build;
 import android.util.Log;
-
 import com.brainydroid.daydreaming.ui.Config;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 
-// Class to create, maintain and update data (SharedPreferences) associated to the app
+/**
+ * Manage global application status (like first launch) and collect
+ * information on the device's status.
+ *
+ * @author Sébastien Lerique
+ * @author Vincent Adam
+ */
+@Singleton
 public class StatusManager {
 
-	private static String TAG = "StatusManager";
+    private static String TAG = "StatusManager";
 
-	private static StatusManager smInstance = null;
+    /** Preference key storing the first launch status */
+    private static String EXP_STATUS_FL_COMPLETED =
+            "expStatusFlCompleted";
 
-	private static final String EXP_STATUS = "expStatus"; // status of experiment
-	private static final String EXP_STATUS_FL_COMPLETED = "expStatusFlCompleted"; // first launch completed
+    /** Preference key storing the status of initial questions update */
+    private static String EXP_STATUS_QUESTIONS_UPDATED =
+            "expStatusQuestionsUpdated";
 
-	private final SharedPreferences expStatus; // file containing status of exp
-	private final SharedPreferences.Editor eExpStatus; // editor of expStatus
+    @Inject LocationManager locationManager;
+    @Inject ConnectivityManager connectivityManager;
+    @Inject ActivityManager activityManager;
 
-	private final LocationManager locationManager;
-	private final ConnectivityManager connManager;
-	private NetworkInfo networkInfo;
-	private final Context context; // application environment
+    private SharedPreferences sharedPreferences;
+    private SharedPreferences.Editor eSharedPreferences;
 
-	public static synchronized StatusManager getInstance(Context context) {
+    /**
+     * Initialize the {@code SharedPreferences} editor.
+     */
+    @Inject
+    public StatusManager(SharedPreferences sharedPreferences) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] getInstance");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] StatusManager");
+        }
 
-		if (smInstance == null) {
-			smInstance = new StatusManager(context);
-		}
-		return smInstance;
-	}
+        this.sharedPreferences = sharedPreferences;
+        eSharedPreferences = sharedPreferences.edit();
+    }
 
-	/*
-	 * Constructor.
-	 * loads context, assign initial preferences
-	 */
-	private StatusManager(Context context) {
+    /**
+     * Check if first launch is completed.
+     *
+     * @return {@code true} if first launch has completed,
+     *         {@code false} otherwise
+     */
+    public boolean isFirstLaunchCompleted() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] StatusManager");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] isFirstLaunchCompleted");
+        }
 
-		this.context = context.getApplicationContext();
-		expStatus = this.context.getSharedPreferences(EXP_STATUS, Context.MODE_PRIVATE);
-		eExpStatus = expStatus.edit();
-		locationManager = (LocationManager)this.context.getSystemService(Context.LOCATION_SERVICE);
-		connManager = (ConnectivityManager)this.context.getSystemService(Context.CONNECTIVITY_SERVICE);
-		networkInfo = connManager.getActiveNetworkInfo();
-	}
+        return sharedPreferences.getBoolean(EXP_STATUS_FL_COMPLETED, false);
+    }
 
-	/*
-	 * Check if first launch is completed
-	 */
-	public boolean isFirstLaunchCompleted() {
+    /**
+     * Set the first launch flag to completed.
+     */
+    public void setFirstLaunchCompleted() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] isFirstLaunchCompleted");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] setFirstLaunchCompleted");
+        }
 
-		return expStatus.getBoolean(EXP_STATUS_FL_COMPLETED, false);
-	}
+        eSharedPreferences.putBoolean(EXP_STATUS_FL_COMPLETED, true);
+        eSharedPreferences.commit();
+    }
 
-	public void setFirstLaunchCompleted() {
+    /**
+     * Check if the questions have been updated.
+     *
+     * @return {@code true} if the questions have been updated,
+     *         {@code false} otherwise
+     */
+    public boolean areQuestionsUpdated() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] setFirstLaunchCompleted");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] areQuestionsUpdated");
+        }
 
-		eExpStatus.putBoolean(EXP_STATUS_FL_COMPLETED, true);
-		eExpStatus.commit();
-	}
+        return sharedPreferences.getBoolean(EXP_STATUS_QUESTIONS_UPDATED,
+                false);
+    }
 
-	public boolean isLocationServiceRunning() {
+    /**
+     * Set the updated questions flag to completed.
+     */
+    public void setQuestionsUpdated() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] isLocationServiceRunning");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] setQuestionsUpdated");
+        }
 
-		ActivityManager manager = (ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
-		for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-			if (LocationService.class.getName().equals(service.service.getClassName())) {
-				return true;
-			}
-		}
-		return false;
-	}
+        eSharedPreferences.putBoolean(EXP_STATUS_QUESTIONS_UPDATED, true);
+        eSharedPreferences.commit();
+    }
 
-	public boolean isNetworkLocEnabled() {
+    /**
+     * Check if {@link LocationService} is running.
+     *
+     * @return {@code true} if {@code LocationService} is running,
+     *         {@code false} otherwise
+     */
+    public boolean isLocationServiceRunning() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] isNetworkEnabled");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] isLocationServiceRunning");
+        }
 
-		return locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-	}
+        // This hack was found on StackOverflow
+        for (RunningServiceInfo service :
+                activityManager.getRunningServices(Integer.MAX_VALUE)) {
+            if (LocationService.class.getName().equals(
+                    service.service.getClassName())) {
+                return true;
+            }
+        }
 
-	public boolean isDataEnabled() {
+        return false;
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] isDataEnabled");
-		}
+    /**
+     * Check if the network location provider is enabled.
+     *
+     * @return {@code true} if the network location provider is enabled,
+     *         {@code false} otherwise
+     */
+    public boolean isNetworkLocEnabled() {
 
-		networkInfo = connManager.getActiveNetworkInfo();
-        return ( ( networkInfo != null && networkInfo.isConnectedOrConnecting() )||( Build.FINGERPRINT.startsWith("generic") ) );	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] isNetworkEnabled");
+        }
 
-	public boolean isDataAndLocationEnabled() {
+        return locationManager.isProviderEnabled(
+                LocationManager.NETWORK_PROVIDER);
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] isDataAndLocationEnabled");
-		}
+    /**
+     * Check if data connection is enabled (or connecting).
+     *
+     * @return {@code true} if data connection is enabled or connecting,
+     *         {@code false} otherwise
+     */
+    public boolean isDataEnabled() {
 
-		return isNetworkLocEnabled() && isDataEnabled();
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] isDataEnabled");
+        }
+
+        NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+        return (networkInfo != null &&
+                networkInfo.isConnectedOrConnecting());
+    }
+
+    /**
+     * Check if both data connection and network location provider are
+     * enabled (data connection can also be still connecting only).
+     *
+     * @return {@code true} if the network location provider is enabled and
+     *         data connection is enabled or connecting,
+     *         {@code false} otherwise
+     */
+    public boolean isDataAndLocationEnabled() {
+
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] isDataAndLocationEnabled");
+        }
+
+        return isNetworkLocEnabled() && isDataEnabled();
+    }
+
 }

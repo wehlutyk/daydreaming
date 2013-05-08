@@ -1,15 +1,14 @@
 package com.brainydroid.daydreaming.ui;
 
-import android.content.Intent;
+import android.graphics.drawable.AnimationDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-
-import com.actionbarsherlock.app.SherlockActivity;
+import android.widget.ImageView;
 import com.brainydroid.daydreaming.R;
-import com.brainydroid.daydreaming.background.StatusManager;
+import roboguice.inject.ContentView;
 
-/*
+/**
  * Activity at first launch
  *
  * In first launch sequence of apps
@@ -19,72 +18,36 @@ import com.brainydroid.daydreaming.background.StatusManager;
  * Next activity     :  FirstLaunchDescriptionActivity
  *
  */
-public class FirstLaunchWelcomeActivity extends SherlockActivity {
+@ContentView(R.layout.activity_first_launch_welcome)
+public class FirstLaunchWelcomeActivity extends FirstLaunchActivity {
 
-	private static String TAG = "FirstLaunchWelcomeActivity";
+    @SuppressWarnings("FieldCanBeLocal")
+    private static String TAG = "FirstLaunchWelcomeActivity";
 
-	private StatusManager status;
 
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onCreate");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onCreate");
+        }
+        super.onCreate(savedInstanceState);
+        ImageView MyImageView = (ImageView)findViewById(R.id.myImageView);
+        MyImageView.setBackgroundResource(R.drawable.animated_background);
+        AnimationDrawable AniFrame = (AnimationDrawable) MyImageView.getBackground();
+        AniFrame.start();
 
-		super.onCreate(savedInstanceState);
+    }
 
-        status = StatusManager.getInstance(this);
+    public void onClick_start(@SuppressWarnings("UnusedParameters") View view) {
 
-		setContentView(R.layout.activity_first_launch_welcome);
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onClick_start");
+        }
 
-	@Override
-	public void onStart() {
+        launchNextActivity(FirstLaunchDescriptionActivity.class);
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onStart");
-		}
-
-		super.onStart();
-		checkFirstLaunch();
-	}
-
-	@Override
-	public void onResume() {
-
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onResume");
-		}
-
-		super.onResume();
-	}
-
-	public void onClick_start(@SuppressWarnings("UnusedParameters") View view) {
-
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onClick_start");
-		}
-
-		Intent intent = new Intent(this, FirstLaunchDescriptionActivity.class);
-		intent.setFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
-		startActivity(intent);
-		overridePendingTransition(R.anim.push_left_in, R.anim.push_left_out);
-	}
-
-	private void checkFirstLaunch() {
-
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] checkFirstLaunch");
-		}
-
-		if (status.isFirstLaunchCompleted()) {
-			finish();
-		}
-	}
 }

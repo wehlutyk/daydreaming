@@ -1,227 +1,215 @@
 package com.brainydroid.daydreaming.background;
 
-import java.util.ArrayList;
-
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.os.SystemClock;
-import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
-
 import com.brainydroid.daydreaming.R;
 import com.brainydroid.daydreaming.db.Poll;
 import com.brainydroid.daydreaming.db.PollsStorage;
 import com.brainydroid.daydreaming.ui.Config;
 import com.brainydroid.daydreaming.ui.QuestionActivity;
+import com.google.inject.Inject;
+import roboguice.service.RoboService;
 
-public class PollService extends Service {
+import java.util.ArrayList;
 
-	private static String TAG = "PollService";
+/**
+ * Create and populate a {@link Poll}, then notify it to the user.
+ *
+ * @author Sébastien Lerique
+ * @author Vincent Adam
+ */
+public class PollService extends RoboService {
 
-	//	public static String POLL_EXPIRE_ID = "pollExpireId";
-	//	public static int EXPIRY_DELAY = 5 * 60 * 1000; // 5 minutes (in milliseconds)
+    private static String TAG = "PollService";
 
-	private static int nQuestionsPerPoll = 3;
+    /** Number of questions per {@link Poll} */
+    public static int N_QUESTIONS_PER_POLL = 3;
 
-	private NotificationManager notificationManager;
-	private PollsStorage pollsStorage;
-	//	private AlarmManager alarmManager;
-	private SharedPreferences sharedPrefs;
+    @Inject NotificationManager notificationManager;
+    @Inject PollsStorage pollsStorage;
+    @Inject SharedPreferences sharedPreferences;
+    @Inject Poll poll;
 
-	@Override
-	public void onCreate() {
+    @Override
+    public void onCreate() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onCreate");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onCreate");
+        }
 
-		super.onCreate();
-	}
+        super.onCreate();
+        // Do nothing. Logging purposes.
+    }
 
-	@Override
-	public int onStartCommand(Intent intent, int flags, int startId) {
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onStartCommand");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onStartCommand");
+        }
 
-		super.onStartCommand(intent, flags, startId);
+        super.onStartCommand(intent, flags, startId);
 
-		initVars();
-		pollsStorage.cleanPolls();
+        // Populate and notify the poll
+        populatePoll();
+        notifyPoll();
 
-		//		int pollExpireId = intent.getIntExtra(POLL_EXPIRE_ID, -1);
-		//		if (pollExpireId == -1) {
-		createAndLaunchPoll();
-		//		} else {
-		//			expirePoll(pollExpireId);
-		//		}
-		stopSelf();
-		return START_REDELIVER_INTENT;
-	}
+        // Schedule the next poll
+        startSchedulerService();
 
-	@Override
-	public void onDestroy() {
+        stopSelf();
+        return START_REDELIVER_INTENT;
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onDestroy");
-		}
+    @Override
+    public void onDestroy() {
 
-		super.onDestroy();
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onDestroy");
+        }
 
-	@Override
-	public IBinder onBind(Intent intent) {
+        super.onDestroy();
+        // Do nothing. Logging purposes.
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] onBind");
-		}
+    @Override
+    public IBinder onBind(Intent intent) {
 
-		// Don't allow binding
-		return null;
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] onBind");
+        }
 
-	private void initVars() {
+        // Don't allow binding
+        return null;
+    }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] initVars");
-		}
+    /**
+     * Create the {@link QuestionActivity} {@code Intent}.
+     *
+     * @return An {@code Intent} to launch our {@link Poll}
+     */
+    private Intent createPollIntent() {
 
-		notificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
-		pollsStorage = PollsStorage.getInstance(this);
-		//		alarmManager = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-	}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] createPollIntent");
+        }
 
-	//	private void expirePoll(int id) {
-	//
-	//		// Debug
-	//		if (Config.LOGD){
-	//			Log.d(TAG, "[fn] expirePoll");
-	//		}
-	//
-	//		notificationManager.cancel(id);
-	//		Poll poll = pollsStorage.getPoll(id);
-	//		if (poll != null) {
-	//			poll.setStatus(Poll.STATUS_EXPIRED);
-	//		}
-	//	}
+        Intent intent = new Intent(this, QuestionActivity.class);
 
-	private void createAndLaunchPoll() {
+        // Set the id of the poll to start
+        intent.putExtra(QuestionActivity.EXTRA_POLL_ID, poll.getId());
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] createAndLaunchPoll");
-		}
+        // Set the index of the question to open
+        intent.putExtra(QuestionActivity.EXTRA_QUESTION_INDEX, 0);
 
-		Poll poll = createPoll();
-		startSchedulerService();
-		notifyPoll(poll);
-	}
+        // Create a new task and don't show up in various Android UI
+        // screens
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                Intent.FLAG_ACTIVITY_CLEAR_TASK |
+                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+        return intent;
+    }
 
-	private Intent createPollIntent(Poll poll) {
+    /**
+     * Notify our poll to the user.
+     */
+    private void notifyPoll() {
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] createPollIntent");
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] notifyPoll");
+        }
 
-		Intent intent = new Intent(this, QuestionActivity.class);
-		intent.putExtra(QuestionActivity.EXTRA_POLL_ID, poll.getId());
-		intent.putExtra(QuestionActivity.EXTRA_QUESTION_INDEX, 0);
-		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
-		return intent;
-	}
+        // Create the PendingIntent
+        Intent intent = createPollIntent();
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
+                intent, PendingIntent.FLAG_CANCEL_CURRENT |
+                PendingIntent.FLAG_ONE_SHOT);
 
-	private void notifyPoll(Poll poll) {
+        int flags = 0;
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] notifyPoll");
-		}
+        // Should we flash the LED?
+        if (sharedPreferences.getBoolean("notification_blink_key", true)) {
+            flags |= Notification.DEFAULT_LIGHTS;
+        }
 
-		// Build notification
-		Intent intent = createPollIntent(poll);
-		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, intent,
-				PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_ONE_SHOT);
+        // Should we vibrate?
+        if (sharedPreferences.getBoolean("notification_vibrator_key",
+                true)) {
+            flags |= Notification.DEFAULT_VIBRATE;
+        }
 
-		int flags = 0;
-		if (sharedPrefs.getBoolean("notification_blink_key", true)) {
-			flags |= Notification.DEFAULT_LIGHTS;
-		}
+        // Should we beep?
+        if (sharedPreferences.getBoolean("notification_sound_key", true)) {
+            flags |= Notification.DEFAULT_SOUND;
+        }
 
-		if (sharedPrefs.getBoolean("notification_vibrator_key", true)) {
-			flags |= Notification.DEFAULT_VIBRATE;
-		}
+        // Create our notification
+        Notification notification = new NotificationCompat.Builder(this)
+        .setTicker(getString(R.string.pollNotification_ticker))
+        .setContentTitle(getString(R.string.pollNotification_title))
+        .setContentText(getString(R.string.pollNotification_text))
+        .setContentIntent(contentIntent)
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setAutoCancel(true)
+        .setOnlyAlertOnce(true)
+        .setDefaults(flags)
+        .build();
 
-		if (sharedPrefs.getBoolean("notification_sound_key", true)) {
-			flags |= Notification.DEFAULT_SOUND;
-		}
+        // And send it to the system
+        notificationManager.notify(poll.getId(), notification);
+    }
 
-		Notification notification = new NotificationCompat.Builder(this)
-		.setTicker(getString(R.string.pollNotification_ticker))
-		.setContentTitle(getString(R.string.pollNotification_title))
-		.setContentText(getString(R.string.pollNotification_text))
-		.setContentIntent(contentIntent)
-		.setSmallIcon(android.R.drawable.ic_dialog_info)
-		.setAutoCancel(true)
-		.setOnlyAlertOnce(true)
-		.setDefaults(flags)
-		.build();
+    /**
+     * Fill our {@link Poll} with questions.
+     */
+    private void populatePoll() {
 
-		notificationManager.notify(poll.getId(), notification);
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] populatePoll");
+        }
 
-		// Build notification expirer
-		//		Intent expirerIntent = new Intent(this, PollService.class);
-		//		expirerIntent.putExtra(POLL_EXPIRE_ID, poll.getId());
-		//		PendingIntent expirerPendingIntent = PendingIntent.getService(this, 0,
-		//				expirerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_ONE_SHOT);
-		//		long expiry = SystemClock.elapsedRealtime() + EXPIRY_DELAY;
-		//		alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-		//				expiry, expirerPendingIntent);
-	}
+        // Pick from already created polls that were never shown to the
+        // user, if there are any
+        ArrayList<Poll> pendingPolls = pollsStorage.getPendingPolls();
 
-	private Poll createPoll() {
+        if (pendingPolls != null) {
+            poll = pendingPolls.get(0);
+        } else {
+            poll.populateQuestions(N_QUESTIONS_PER_POLL);
+        }
 
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] createPoll");
-		}
+        // Update the poll's status
+        poll.setStatus(Poll.STATUS_PENDING);
+        poll.setNotificationTimestamp(SystemClock.elapsedRealtime());
+        poll.save();
+    }
 
-		ArrayList<Poll> pendingPolls = pollsStorage.getPendingPolls();
-		Poll poll;
+    /**
+     * Start {@link SchedulerService} for the next {@link Poll}.
+     */
+    private void startSchedulerService() {
 
-		if (pendingPolls != null) {
-			poll = pendingPolls.get(0);
-		} else {
-			poll = Poll.create(this, nQuestionsPerPoll);
-		}
+        // Debug
+        if (Config.LOGD) {
+            Log.d(TAG, "[fn] startSchedulerService");
+        }
 
-		poll.setStatus(Poll.STATUS_PENDING);
-		poll.setNotificationTimestamp(SystemClock.elapsedRealtime());
-		poll.save();
-		return poll;
-	}
+        Intent schedulerIntent = new Intent(this, SchedulerService.class);
+        startService(schedulerIntent);
+    }
 
-	private void startSchedulerService() {
-
-		// Debug
-		if (Config.LOGD) {
-			Log.d(TAG, "[fn] startSchedulerService");
-		}
-
-		Intent schedulerIntent = new Intent(this, SchedulerService.class);
-		startService(schedulerIntent);
-	}
 }
