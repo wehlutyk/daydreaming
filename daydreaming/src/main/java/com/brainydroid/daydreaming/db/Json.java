@@ -7,7 +7,18 @@ import com.brainydroid.daydreaming.network.JWSSignature;
 import com.brainydroid.daydreaming.network.JWSSignatureSerializer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
+import com.google.gson.reflect.TypeToken;
 import com.google.inject.Singleton;
+
+import java.lang.reflect.Type;
+import java.util.HashMap;
 
 import javax.inject.Inject;
 
@@ -122,5 +133,12 @@ public class Json {
         Logger.v(TAG, "Deserializing from JSON");
         return gson.fromJson(json, classOfT);
     }
+
+    public <T> T fromJson(String json, Type typeOfT) {
+        Logger.v(TAG, "Deserializing from JSON");
+        return gson.fromJson(json, typeOfT);
+    }
+
+
 
 }

@@ -18,12 +18,18 @@ import com.brainydroid.daydreaming.network.HttpGetData;
 import com.brainydroid.daydreaming.network.HttpGetTask;
 import com.brainydroid.daydreaming.network.ParametersStorageCallback;
 import com.brainydroid.daydreaming.network.ServerConfig;
+import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
+import org.json.JSONObject;
+
+import java.lang.reflect.Type;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 
 @Singleton
@@ -65,6 +71,7 @@ public class ParametersStorage {
     public static String BACKEND_API_URL = "backendApiUrl";
     public static String RESULTS_PAGE_URL = "resultsPageUrl";
     public static String FIRST_LAUNCH =  "firstLaunch";
+    public static String GLOSSARY = "glossary";
 
     private SharedPreferences sharedPreferences;
     private SharedPreferences.Editor eSharedPreferences;
@@ -277,6 +284,23 @@ public class ParametersStorage {
         return nSlotsPerProbe;
     }
 
+    private synchronized void setGlossary(HashMap<String,String> glossary) {
+        String glossaryString = json.toJson(glossary);
+        Logger.d(TAG, "{0} - Setting glossary to {1}", statusManager.getCurrentModeName(), glossaryString);
+        eSharedPreferences.putString(statusManager.getCurrentModeName() + GLOSSARY, glossaryString);
+        eSharedPreferences.commit();
+    }
+
+    public synchronized HashMap<String,String> getGlossary() {
+        String glossaryString = sharedPreferences.getString(
+                statusManager.getCurrentModeName() + GLOSSARY,
+                ServerParametersJson.DEFAULT_GLOSSARY);
+        Type hmtype = new TypeToken<HashMap<String,String>>() {}.getType();
+        HashMap<String,String> glossary = json.fromJson(glossaryString,hmtype);
+        Logger.v(TAG, "{0} - glossary is {1}", statusManager.getCurrentModeName(), glossaryString);
+        return glossary;
+    }
+
     public synchronized void clearNSlotsPerProbe() {
         Logger.d(TAG, "{} - Clearing nSlotsPerProbe", statusManager.getCurrentModeName());
         eSharedPreferences.remove(statusManager.getCurrentModeName() + QUESTIONS_N_SLOTS_PER_PROBE);
@@ -412,7 +436,6 @@ public class ParametersStorage {
     public synchronized void importParameters(String jsonParametersString)
             throws ParametersSyntaxException {
         Logger.d(TAG, "{} - Importing parameters from JSON", statusManager.getCurrentModeName());
-
         try {
             ServerParametersJson serverParametersJson = json.fromJson(
                     jsonParametersString, ServerParametersJson.class);
@@ -435,6 +458,8 @@ public class ParametersStorage {
             setNSlotsPerProbe(serverParametersJson.getNSlotsPerProbe());
             setSchedulingMinDelay(serverParametersJson.getSchedulingMinDelay());
             setSchedulingMeanDelay(serverParametersJson.getSchedulingMeanDelay());
+            setGlossary(serverParametersJson.getGlossary());
+
             // loading the questions
             add(serverParametersJson.getQuestionsArrayList());
 
