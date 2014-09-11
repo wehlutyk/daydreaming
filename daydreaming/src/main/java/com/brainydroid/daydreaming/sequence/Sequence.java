@@ -20,15 +20,21 @@ public class Sequence extends TypedStatusModel<Sequence,SequencesStorage,Sequenc
     private static String TAG = "Sequence";
 
     public static String TYPE_PROBE = "probe";
-    public static String[] AVAILABLE_TYPES = new String[] {TYPE_PROBE};
+    public static String TYPE_BEGIN_QUESTIONNAIRE = "begin_questionnaire";
+
+    public static String[] AVAILABLE_TYPES = new String[] {TYPE_PROBE,TYPE_BEGIN_QUESTIONNAIRE};
 
     public static final String STATUS_PENDING = "pending"; // Notification has appeared
     public static final String STATUS_RUNNING = "running"; // Activity is running
     public static final String STATUS_PARTIALLY_COMPLETED = "partiallyCompleted"; // Activity was stopped (if a probe, it expired, if a questionnaire, can be resumed)
     public static final String STATUS_COMPLETED = "completed"; // Activity completed
 
+    public static String[] AVAILABLE_STATUSES = new String[] {STATUS_PENDING,STATUS_RUNNING,STATUS_PARTIALLY_COMPLETED,STATUS_COMPLETED};
+
     @JsonView(Views.Public.class)
     private String name = null;
+    @JsonView(Views.Public.class)
+    private String intro = null;
     @JsonView(Views.Public.class)
     private long notificationNtpTimestamp = -1;
     @JsonView(Views.Public.class)
@@ -37,6 +43,10 @@ public class Sequence extends TypedStatusModel<Sequence,SequencesStorage,Sequenc
     private ArrayList<PageGroup> pageGroups = null;
 
     @Inject @JacksonInject private SequencesStorage sequencesStorage;
+
+    public synchronized String getIntro() {
+        return intro;
+    }
 
     public synchronized String getName() {
         return name;
@@ -47,9 +57,15 @@ public class Sequence extends TypedStatusModel<Sequence,SequencesStorage,Sequenc
         saveIfSync();
     }
 
+    private synchronized void setIntro(String intro) {
+        this.intro = intro;
+        saveIfSync();
+    }
+
     public synchronized void importFromSequenceDescription(SequenceDescription description) {
         setName(description.getName());
         setType(description.getType());
+        setIntro(description.getIntro());
     }
 
     public synchronized void setPageGroups(ArrayList<PageGroup> pageGroups) {

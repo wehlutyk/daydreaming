@@ -569,4 +569,23 @@ public class StatusManager {
         return areParametersUpdated();
     }
 
+
+    /**
+     * Check if beginning questionnaires are completed
+     *
+     * @return {@code true} if beginning questionnaires are completed
+     *         {@code false} otherwise
+     */
+    public synchronized boolean areBeginningQuestionnairesCompleted() {
+        if (sequencesStorageProvider.get().getUploadableSequences(Sequence.TYPE_BEGIN_QUESTIONNAIRE).isEmpty())  {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public synchronized boolean areResultsAvailable(){
+        return false;
+    }
+
 }
