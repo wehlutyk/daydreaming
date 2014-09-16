@@ -566,18 +566,18 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         startService(syncIntent);
     }
 
-    /**
-     * Launching poll from dashboard (debug)
-     */
-    public void runPollNow(@SuppressWarnings("UnusedParameters") View view) {
+    public void runSyncNow(View view) {
         if (statusManager.isExpRunning()) {
-            Logger.d(TAG, "Launching a debug poll");
+            Logger.d(TAG, "Launching debug sync now");
 
-            Intent pollIntent = new Intent(this, SchedulerService.class);
-            pollIntent.putExtra(SchedulerService.SCHEDULER_DEBUGGING, true);
-            startService(pollIntent);
+            if (!statusManager.isDataEnabled()) {
+                Toast.makeText(this, "You're not connected to the internet!", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-            Toast.makeText(this, "Now wait for 5 secs", Toast.LENGTH_SHORT).show();
+            Intent syncIntent = new Intent(this, SyncService.class);
+            syncIntent.putExtra(SyncService.DEBUG_SYNC, true);
+            startService(syncIntent);
         } else {
             Toast.makeText(this, "Parameters aren't loaded yet", Toast.LENGTH_SHORT).show();
         }

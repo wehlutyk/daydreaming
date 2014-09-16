@@ -36,12 +36,6 @@ public class SchedulerService extends RoboService {
 
     private static String TAG = "SchedulerService";
 
-    /** Extra to set to {@code true} for debugging */
-    public static String SCHEDULER_DEBUGGING = "schedulerDebugging";
-
-    /** Scheduling delay when debugging is activated */
-    public static long DEBUG_DELAY = 5 * 1000; // 5 seconds
-
     public static long QUESTIONNAIRE_DELAY_AFTER_WINDOW_START = 30 * 60 * 1000; // 30 minutes
 
     // Handy object that will be holding the 'now' time
@@ -86,11 +80,11 @@ public class SchedulerService extends RoboService {
         }
 
         // Schedule a probe
-        scheduleProbe(intent.getBooleanExtra(SCHEDULER_DEBUGGING, false));
+        scheduleProbe();
 
         // Schedule begin questionnaire
         if (!statusManager.areBeginQuestionnairesCompleted()) {
-            scheduleBeginQuestionnaire(intent.getBooleanExtra(SCHEDULER_DEBUGGING, false));
+            scheduleBeginQuestionnaire();
         } else {
             Logger.d(TAG, "BeginQuestionnaire all answered . no need to schedule notif.");
         }
@@ -134,14 +128,12 @@ public class SchedulerService extends RoboService {
      * Schedule a {@link com.brainydroid.daydreaming.sequence.Sequence} to be created
      * and notified by {@link ProbeService} later on.
      *
-     * @param debugging Set to {@link true} for a fixed short delay before
-     *                  notification
      */
-    private synchronized void scheduleProbe(boolean debugging) {
+    private synchronized void scheduleProbe() {
         Logger.d(TAG, "Scheduling new probe");
 
         // Generate the time at which the probe will appear
-        long scheduledTime = generateTime(debugging);
+        long scheduledTime = generateTime();
 
         // Create and schedule the PendingIntent for ProbeService
         Intent intent = new Intent(this, ProbeService.class);
@@ -155,14 +147,12 @@ public class SchedulerService extends RoboService {
      * Schedule a {@link com.brainydroid.daydreaming.ui.dashboard.BeginQuestionnairesActivity} to be created
      * and notified by {@link com.brainydroid.daydreaming.background.BeginQuestionnaireService} later on.
      *
-     * @param debugging Set to {@link true} for a fixed short delay before
-     *                  notification
      */
-    private synchronized void scheduleBeginQuestionnaire(boolean debugging) {
+    private synchronized void scheduleBeginQuestionnaire() {
         Logger.d(TAG, "Scheduling new BeginQuestionnaire");
 
         // Generate the time at which the probe will appear
-        long scheduledTime = generateBeginQuestionnaireTime(debugging);
+        long scheduledTime = generateBeginQuestionnaireTime();
 
         // Create and schedule the PendingIntent for ProbeService
         Intent intent = new Intent(this, BeginQuestionnaireService.class);
@@ -172,7 +162,7 @@ public class SchedulerService extends RoboService {
                 scheduledTime, pendingIntent);
     }
 
-    private synchronized long generateBeginQuestionnaireTime(boolean debugging) {
+    private synchronized long generateBeginQuestionnaireTime() {
         fixNowAndGetAllowedWindow();
         Logger.d(TAG, "Calculating time for new BeginQuestionnaire notification");
 
@@ -185,13 +175,9 @@ public class SchedulerService extends RoboService {
         }
 
         long delay;
-        if (debugging) {
-            delay = DEBUG_DELAY;
-        } else {
-            // BeginQuestionnaires are notified 30 min after begin of bother window everyday
-            delay = now.getTimeInMillis() - nextStart.getTimeInMillis()
-                    + QUESTIONNAIRE_DELAY_AFTER_WINDOW_START;
-        }
+        // BeginQuestionnaires are notified 30 min after begin of bother window everyday
+        delay = now.getTimeInMillis() - nextStart.getTimeInMillis()
+                + QUESTIONNAIRE_DELAY_AFTER_WINDOW_START;
 
         // Log the delay
         long milliseconds = delay;
@@ -267,12 +253,10 @@ public class SchedulerService extends RoboService {
      * is the same (see {@link #makeRespectfulDelay} and {@link
      * #makeRespectfulExpansion} for details).
      *
-     * @param debugging Set to {@link true} to get a fixed short delay for
-     *                  the notification instead of a random delay
      * @return Scheduled (and shifted) moment for the probe to appear,
      *         in milliseconds from epoch
      */
-    private synchronized long generateTime(boolean debugging) {
+    private synchronized long generateTime() {
         Logger.d(TAG, "Generating a time for schedule");
 
         // Fix what 'now' means, and retrieve the allowed time window
@@ -280,16 +264,10 @@ public class SchedulerService extends RoboService {
 
         // Build a delay that respects the user's settings.
         long respectfulDelay;
-        if (debugging) {
-            // If we're debugging, keep it real simple.
-            Logger.d(TAG, "Using debug delay");
-            respectfulDelay = DEBUG_DELAY;
-        } else {
-            // Sample a delay and prolong it as necessary to respect the
-            // user's settings.
-            Logger.d(TAG, "Using random time-window-respectful delay");
-            respectfulDelay = makeRespectfulDelay(sampleDelay());
-        }
+        // Sample a delay and prolong it as necessary to respect the
+        // user's settings.
+        Logger.d(TAG, "Using random time-window-respectful delay");
+        respectfulDelay = makeRespectfulDelay(sampleDelay());
 
         // Get the scheduled time into a palatable object.
         Calendar scheduledCalendar = (Calendar)now.clone();
