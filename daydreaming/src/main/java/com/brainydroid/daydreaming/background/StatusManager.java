@@ -73,8 +73,6 @@ public class StatusManager {
 
     public static String NOTIFICATION_EXPIRY_EXPLAINED = "notificationExpiryExplained";
 
-    // TODO: add transient dashboard lock, that expires after 2 minutes
-
     public static final String ACTION_PARAMETERS_STATUS_CHANGE = "actionParametersStatusChange";
 
     public static int MODE_PROD = 0;
@@ -91,6 +89,8 @@ public class StatusManager {
     public static long RESTART_LOCATION_POINT_SERVICE_DELAY = 1 * 60 * 60 * 1000;
 
     private int cachedCurrentMode = MODE_DEFAULT;
+    private boolean isDashboardRunning = false;
+    private long isDashboardRunningTimestamp = -1;
     private boolean isParametersSyncRunning = false;
     private boolean isRegistrationRunning = false;
     private boolean isSequencesSyncRunning = false;
@@ -252,7 +252,7 @@ public class StatusManager {
     eSharedPreferences.commit();
 }
 
-    public synchronized boolean areNotificationExpiryExplained() {
+    public synchronized boolean isNotificationExpiryExplained() {
         if (sharedPreferences.getBoolean(getCurrentModeName() + NOTIFICATION_EXPIRY_EXPLAINED,
                 false)) {
             Logger.v(TAG, "{} - Notification expiry not yet explained", getCurrentModeName());
@@ -268,6 +268,18 @@ public class StatusManager {
 
         eSharedPreferences.remove(getCurrentModeName() + NOTIFICATION_EXPIRY_EXPLAINED);
         eSharedPreferences.commit();
+    }
+
+    public synchronized void setDashboardRunning(boolean running) {
+        Logger.v(TAG, "Setting isDashboardRunning to {}", running);
+        isDashboardRunning = true;
+        isDashboardRunningTimestamp = Calendar.getInstance().getTimeInMillis();
+    }
+
+    public synchronized boolean isDashboardRunning() {
+        long now = Calendar.getInstance().getTimeInMillis();
+        // Dashboard is running, and we have that information from less than 2 minutes ago
+        return isDashboardRunning && (now - isDashboardRunningTimestamp < 2 * 60 * 1000);
     }
 
     /**
