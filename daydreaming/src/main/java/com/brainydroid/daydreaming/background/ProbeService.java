@@ -50,17 +50,21 @@ public class ProbeService extends RoboService {
     public synchronized int onStartCommand(Intent intent, int flags, int startId) {
         Logger.d(TAG, "ProbeService started");
 
-        // TODO: if started to expire, check notification expiry is explained, expire (if still pending) and set recentlyMissed status
+        // TODO: if started to create
+        //       * there's a probe running -> do nothing (will re-schedule from onPause in probe)
+        //       * dashboard is running -> reschedule (so as not to flush recently* during dashboard)
+        //       * set all recently* to missedOrDismissedOrIncomplete. There should be at most one (if not, report to ACRA).
+        //       * Use a pending probe and cancel its notif, or create new. There will only be a pending if minSchedule < expireTime, or if notif recreated after reboot and not expired or dismissed. If this happends, report to ACRA.
+        //       * schedule self for expiry with an intent that won't be cancelled elsewhere except in deleteIntent
+        //       * add deleteIntent to set recentlyDismissed status (with same intent as expiry, only runs once)
 
-        // TODO: if started to expire or dismiss, reschedule.
+        // TODO: if started to dismiss
+        //       * dismiss (there can't be any other probe running), set recentlyDismissed
+        //       * reschedule
 
-        // TODO: if started to create, set all recently* to missedOrDismissedOrIncomplete. There should be at most one (if not, report to ACRA).
-        // Use a pending probe and cancel its notif, or create new.
-        // schedule self for expiry with an intent that won't be cancelled elsewhere except in deleteIntent
-        // add deleteIntent to set recentlyDismissed status (with same intent as expiry, only runs once)
-
-        // TODO: if started to create, but a probe is running, do nothing (it will reschedule from onPause in probe)
-        // TODO: if started to create, but dashboard is running, reschedule.
+        // TODO: if started to expire
+        //       * check notification expiry is explained, expire (if still pending) and set recentlyMissed status
+        //       * reschedule
 
         super.onStartCommand(intent, flags, startId);
 
