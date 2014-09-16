@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonView;
 import com.google.inject.Inject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 
 public class Sequence extends TypedStatusModel<Sequence,SequencesStorage,SequenceJsonFactory>
         implements ISequence {
@@ -54,6 +56,12 @@ public class Sequence extends TypedStatusModel<Sequence,SequencesStorage,Sequenc
             STATUS_COMPLETED,
             STATUS_UPLOADED_AND_KEEP};
 
+    public static HashSet<String> PAUSED_STATUSES =
+            new HashSet<String>(Arrays.asList(new String[] {
+            STATUS_RECENTLY_DISMISSED,
+            STATUS_RECENTLY_MISSED,
+            STATUS_RECENTLY_PARTIALLY_COMPLETED}));
+
     @JsonView(Views.Public.class)
     private String name = null;
     @JsonView(Views.Public.class)
@@ -71,6 +79,8 @@ public class Sequence extends TypedStatusModel<Sequence,SequencesStorage,Sequenc
     private boolean skipBonusesAsked = false;
     @JsonView(Views.Public.class)
     private boolean selfInitiated = false;
+    @JsonView(Views.Public.class)
+    private boolean wasMissedOrDismissedOrPaused = false;
 
     @Inject private SequencesStorage sequencesStorage;
 
@@ -122,6 +132,14 @@ public class Sequence extends TypedStatusModel<Sequence,SequencesStorage,Sequenc
         saveIfSync();
     }
 
+    public synchronized boolean isSelfInitiated() {
+        return selfInitiated;
+    }
+
+    public synchronized void setSelfInitiated(boolean selfInitiated) {
+        this.selfInitiated = selfInitiated;
+    }
+
     public synchronized void setSkipBonuses(boolean skip) {
         Logger.v(TAG, "Setting skipBonuses to {}", skip);
         skipBonuses = skip;
@@ -133,16 +151,22 @@ public class Sequence extends TypedStatusModel<Sequence,SequencesStorage,Sequenc
         return skipBonuses;
     }
 
-    public synchronized boolean isSelfInitiated() {
-        return selfInitiated;
-    }
-
-    public synchronized void setSelfInitiated(boolean selfInitiated) {
-        this.selfInitiated = selfInitiated;
-    }
-
     public synchronized boolean isSkipBonusesAsked() {
         return skipBonusesAsked;
+    }
+
+    @Override
+    public synchronized void setStatus(String status) {
+        if (PAUSED_STATUSES.contains(status)) {
+            Logger.v(TAG, "Remembering that sequence went through a paused state (recently*)");
+            wasMissedOrDismissedOrPaused = true;
+        }
+        // Save occurs in super.setStatus()
+        super.setStatus(status);
+    }
+
+    public boolean wasMissedOrDismissedOrPaused() {
+        return wasMissedOrDismissedOrPaused;
     }
 
     public synchronized Page getCurrentPage() {
