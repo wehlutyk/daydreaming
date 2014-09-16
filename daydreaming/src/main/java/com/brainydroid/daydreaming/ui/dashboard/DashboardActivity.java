@@ -143,8 +143,6 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         updateChromeMode();
         super.onStart();
 
-        // TODO: show if we have a recently*. With date/time.
-
         populateShowcaseViews();
         if (statusManager.areParametersUpdated()){
              launchShowCaseViewSequence(UNIQUE);
@@ -167,6 +165,10 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         }
         updateExperimentStatus();
         updateResultsPulse();
+
+
+
+        // TODO: show if we have a recently*. With date/time.
 
         // Set dashboard lock
         statusManager.setDashboardRunning(true);
@@ -204,6 +206,10 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         }
 
         super.onPause();
+    }
+
+    private void updateRecentProbesView() {
+
     }
 
     /**
@@ -572,23 +578,6 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
             startService(pollIntent);
 
             Toast.makeText(this, "Now wait for 5 secs", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "Parameters aren't loaded yet", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    public void runSyncNow(View view) {
-        if (statusManager.isExpRunning()) {
-            Logger.d(TAG, "Launching debug sync now");
-
-            if (!statusManager.isDataEnabled()) {
-                Toast.makeText(this, "You're not connected to the internet!", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            Intent syncIntent = new Intent(this, SyncService.class);
-            syncIntent.putExtra(SyncService.DEBUG_SYNC, true);
-            startService(syncIntent);
         } else {
             Toast.makeText(this, "Parameters aren't loaded yet", Toast.LENGTH_SHORT).show();
         }
