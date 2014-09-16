@@ -223,7 +223,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         Logger.v(TAG, "Getting recently* marked probes");
         ArrayList<Sequence> recentProbes =
                 sequencesStorage.getRecentlyMarkedSequences(Sequence.TYPE_PROBE);
-        if (recentProbes.size() > 0) {
+        if (recentProbes != null) {
             if (recentProbes.size() > 1) {
                 Logger.e(TAG, "Found more than one probe marked recent. Offending probes:");
                 Logger.eRaw(TAG, json.toJsonInternal(recentProbes));
@@ -934,7 +934,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
 
         // Look for a pending probe
         ArrayList<Sequence> pendingSequences = sequencesStorage.getPendingSequences(Sequence.TYPE_PROBE);
-        if (pendingSequences.size() > 0) {
+        if (pendingSequences != null) {
             if (pendingSequences.size() > 1) {
                 // We have a problem
                 Logger.e(TAG, "Found more than one pending probe. Offending probes:");
