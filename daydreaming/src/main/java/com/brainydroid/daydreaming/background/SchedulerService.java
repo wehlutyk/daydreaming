@@ -80,7 +80,6 @@ public class SchedulerService extends RoboService {
         // happen to be updated, the SchedulerService will be run again.
         startSyncService();
 
-        // Schedule a probe
         if (!statusManager.areParametersUpdated()) {
             Logger.d(TAG, "Parameters not updated yet. aborting scheduling.");
             return START_REDELIVER_INTENT;
