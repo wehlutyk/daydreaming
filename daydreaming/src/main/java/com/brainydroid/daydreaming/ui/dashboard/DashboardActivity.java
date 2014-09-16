@@ -91,6 +91,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     private boolean areParametersUpdating = false;
     private long lastFailedParametersUpdate = -1;
     private Timer updateTimer = null;
+    private Timer lockTimer = null;
 
     List<Integer> showcasesId;
     List<String[]> showcasesTexts;
@@ -142,8 +143,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         updateChromeMode();
         super.onStart();
 
-        // TODO: show if we have a recently*. With date/time. And lock in statusManager (renew every minute).
-        // unlock statusManager when quitting (but make sure this doesn't happen because of a dialog)
+        // TODO: show if we have a recently*. With date/time.
 
         populateShowcaseViews();
         if (statusManager.areParametersUpdated()){
@@ -167,6 +167,19 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         }
         updateExperimentStatus();
         updateResultsPulse();
+
+        // Set dashboard lock
+        statusManager.setDashboardRunning(true);
+        if (lockTimer == null) {
+            lockTimer = new Timer("lockTimer");
+            lockTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    statusManager.setDashboardRunning(true);
+                }
+            }, 60 * 1000, 60 * 1000);
+        }
+
         super.onResume();
     }
 
@@ -183,6 +196,13 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
             updateTimer.cancel();
             updateTimer = null;
         }
+
+        // Remove dashboard lock
+        if (lockTimer != null) {
+            lockTimer.cancel();
+            lockTimer = null;
+        }
+
         super.onPause();
     }
 
