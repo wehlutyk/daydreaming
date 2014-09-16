@@ -930,10 +930,29 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     }
 
     public Sequence createNewProbe() {
-        // TODO: if resuming a recent*, use it.
-        // Otherwise take a pending one and cancel its notif, or create new.
+        Sequence probe;
 
-        Sequence probe = sequenceBuilder.buildSave(Sequence.TYPE_PROBE);
+        // Look for a pending probe
+        ArrayList<Sequence> pendingSequences = sequencesStorage.getPendingSequences(Sequence.TYPE_PROBE);
+        if (pendingSequences.size() > 0) {
+            if (pendingSequences.size() > 1) {
+                // We have a problem
+                Logger.e(TAG, "Found more than one pending probe. Offending probes:");
+                Logger.eRaw(TAG, json.toJsonInternal(pendingSequences));
+                for (Sequence offendingProbe : pendingSequences) {
+                    offendingProbe.setStatus(Sequence.STATUS_MISSED_OR_DISMISSED_OR_INCOMPLETE);
+                }
+                errorHandler.logError("Found more than one pending probe. Setting as missedOrDismissedOrIncomplete",
+                        new ConsistencyException());
+                // Still build a probe
+                probe = sequenceBuilder.buildSave(Sequence.TYPE_PROBE);
+            } else {
+                probe = pendingSequences.get(0);
+            }
+        } else {
+            // Otherwise build one
+            probe = sequenceBuilder.buildSave(Sequence.TYPE_PROBE);
+        }
         probe.setSelfInitiated(true);
         return probe;
     }
