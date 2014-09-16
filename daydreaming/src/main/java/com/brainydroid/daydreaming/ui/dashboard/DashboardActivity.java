@@ -27,11 +27,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.brainydroid.daydreaming.R;
+import com.brainydroid.daydreaming.background.ErrorHandler;
 import com.brainydroid.daydreaming.background.Logger;
-import com.brainydroid.daydreaming.background.SchedulerService;
 import com.brainydroid.daydreaming.background.StatusManager;
 import com.brainydroid.daydreaming.background.SyncService;
+import com.brainydroid.daydreaming.db.ConsistencyException;
+import com.brainydroid.daydreaming.db.Json;
 import com.brainydroid.daydreaming.db.ParametersStorage;
+import com.brainydroid.daydreaming.db.SequencesStorage;
 import com.brainydroid.daydreaming.network.SntpClient;
 import com.brainydroid.daydreaming.network.SntpClientCallback;
 import com.brainydroid.daydreaming.sequence.Sequence;
@@ -64,8 +67,11 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     @Inject StatusManager statusManager;
     @Inject SntpClient sntpClient;
     @Inject SequenceBuilder sequenceBuilder;
+    @Inject SequencesStorage sequencesStorage;
     @Inject Sequence probe;
     @Inject NotificationManager notificationManager;
+    @Inject Json json;
+    @Inject ErrorHandler errorHandler;
 
     @InjectView(R.id.dashboard_main_layout) RelativeLayout dashboardMainLayout;
     @InjectView(R.id.dashboard_ExperimentTimeElapsed2)
@@ -81,10 +87,18 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     @InjectView(R.id.dashboard_ExperimentResultsIn2days) TextView toGoTextDays;
     @InjectView(R.id.dashboard_ExperimentResultsButton) AlphaButton resultsButton;
     @InjectView(R.id.dashboard_debug_information) TextView debugInfoText;
+    @InjectView(R.id.dashboard_recent_probe_text) TextView recentProbeText;
 
     @InjectResource(R.string.dashboard_text_days) String textDays;
     @InjectResource(R.string.dashboard_text_day) String textDay;
     @InjectResource(R.integer.dashboard_swipe_velocity_threshold) int SWIPE_VELOCITY_THRESHOLD;
+    @InjectResource(R.string.dashboard_you_missed) String youMissed;
+    @InjectResource(R.string.dashboard_you_dismissed) String youDismissed;
+    @InjectResource(R.string.dashboard_you_started) String youStarted;
+    @InjectResource(R.string.dashboard_hour) String textHour;
+    @InjectResource(R.string.dashboard_hours) String textHours;
+    @InjectResource(R.string.dashboard_minutes) String textMinutes;
+    @InjectResource(R.string.dashboard_ago_swipe_to_get_back) String swipeToGetBack;
 
     private boolean testModeThemeActivated = false;
     private int daysToGo = -1;
@@ -165,10 +179,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         }
         updateExperimentStatus();
         updateResultsPulse();
-
-
-
-        // TODO: show if we have a recently*. With date/time.
+        updateRecentProbesView();
 
         // Set dashboard lock
         statusManager.setDashboardRunning(true);
@@ -209,7 +220,60 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     }
 
     private void updateRecentProbesView() {
+        ArrayList<Sequence> recentProbes =
+                sequencesStorage.getRecentlyMarkedSequences(Sequence.TYPE_PROBE);
+        if (recentProbes.size() > 0) {
+            if (recentProbes.size() > 1) {
+                Logger.e(TAG, "Found more than one probe marked recent. Offending probes:");
+                Logger.eRaw(TAG, json.toJsonInternal(recentProbes));
+                errorHandler.logError("Too many recently* probes", new ConsistencyException());
+                return;
+            }
 
+            Sequence recentProbe = recentProbes.get(0);
+            StringBuilder msgBuilder = new StringBuilder();
+            if (recentProbe.getStatus().equals(Sequence.STATUS_RECENTLY_MISSED)) {
+                msgBuilder.append(youMissed);
+            } else if (recentProbe.getStatus().equals(Sequence.STATUS_RECENTLY_DISMISSED)) {
+                msgBuilder.append(youDismissed);
+            } else if (recentProbe.getPageGroups().equals(Sequence.STATUS_RECENTLY_PARTIALLY_COMPLETED)) {
+                msgBuilder.append(youStarted);
+            } else {
+                // We got a problem!
+                Logger.e(TAG, "The following sequence is supposed to be marked recently*, but isn't");
+                Logger.eRaw(TAG, json.toJsonInternal(recentProbe));
+                errorHandler.logError("Sequence gotten as marked recently*, " +
+                        "but couldn't match its status", new ConsistencyException());
+                return;
+            }
+
+            msgBuilder.append(" ");
+
+            long now = Calendar.getInstance().getTimeInMillis();
+            float delayMinutes = ((float)(now - recentProbe.getNotificationSystemTimestamp()))
+                    / (60 * 1000);
+            if (delayMinutes < 60) {
+                msgBuilder.append(Math.round(delayMinutes));
+                msgBuilder.append(textMinutes);
+            } else {
+                int hourNumber = Math.round(delayMinutes / 60);
+                msgBuilder.append(hourNumber);
+                if (hourNumber > 1) {
+                    msgBuilder.append(textHours);
+                } else {
+                    msgBuilder.append(textHour);
+                }
+            }
+
+            msgBuilder.append(" ");
+            msgBuilder.append(swipeToGetBack);
+
+            recentProbeText.setText(msgBuilder.toString());
+            recentProbeText.setVisibility(View.VISIBLE);
+        } else {
+            recentProbeText.setText("");
+            recentProbeText.setVisibility(View.GONE);
+        }
     }
 
     /**

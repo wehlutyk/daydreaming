@@ -132,6 +132,10 @@ public class Sequence extends TypedStatusModel<Sequence,SequencesStorage,Sequenc
         saveIfSync();
     }
 
+    public synchronized long getNotificationSystemTimestamp() {
+        return notificationSystemTimestamp;
+    }
+
     public synchronized boolean isSelfInitiated() {
         return selfInitiated;
     }
