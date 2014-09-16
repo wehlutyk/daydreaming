@@ -71,6 +71,8 @@ public class StatusManager {
     public static String ARE_RESULTS_NOTIFIED_DASHBOARD = "areResultsNotifiedDashboard";
     public static String ARE_RESULTS_NOTIFIED = "areResultsNotified";
 
+    public static String NOTIFICATION_EXPIRY_EXPLAINED = "notificationExpiryExplained";
+
     public static final String ACTION_PARAMETERS_STATUS_CHANGE = "actionParametersStatusChange";
 
     public static int MODE_PROD = 0;
@@ -238,6 +240,31 @@ public class StatusManager {
         Logger.d(TAG, "{} - Clearing resultsNotified", getCurrentModeName());
 
         eSharedPreferences.remove(getCurrentModeName() + ARE_RESULTS_NOTIFIED);
+        eSharedPreferences.commit();
+    }
+
+    public synchronized void setNotificationExpiryExplained() {
+    Logger.d(TAG, "{} - Setting notificationExpiryExplained to true", getCurrentModeName(), true);
+
+    eSharedPreferences.putBoolean(getCurrentModeName() + NOTIFICATION_EXPIRY_EXPLAINED, true);
+    eSharedPreferences.commit();
+}
+
+    public synchronized boolean areNotificationExpiryExplained() {
+        if (sharedPreferences.getBoolean(getCurrentModeName() + NOTIFICATION_EXPIRY_EXPLAINED,
+                false)) {
+            Logger.v(TAG, "{} - Notification expiry not yet explained", getCurrentModeName());
+            return true;
+        } else {
+            Logger.v(TAG, "{} - Notification expiry not yet explained", getCurrentModeName());
+            return false;
+        }
+    }
+
+    public synchronized void clearNotificationExpiryExplained() {
+        Logger.d(TAG, "{} - Clearing notificationExpiryExplained", getCurrentModeName());
+
+        eSharedPreferences.remove(getCurrentModeName() + NOTIFICATION_EXPIRY_EXPLAINED);
         eSharedPreferences.commit();
     }
 
