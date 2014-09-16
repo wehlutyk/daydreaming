@@ -585,6 +585,7 @@ public class StatusManager {
         clearExperimentStartTimestamp();
         clearResultsNotified();
         clearResultsNotifiedDashboard();
+        clearNotificationExpiryExplained();
 
         // Cancel any running location collection and pending notifications.
         // This is done after the switch to make sure no polls / location collection are
@@ -615,9 +616,10 @@ public class StatusManager {
         // Cancel any running location collection and pending notifications
         cancelNotifiedPollsAndCollectingLocations();
 
-        // Clear result flags
+        // Clear result and notification expiry flags
         clearResultsNotified();
         clearResultsNotifiedDashboard();
+        clearNotificationExpiryExplained();
 
         // Clear crypto storage to force a new handshake
         cryptoStorageProvider.get().clearStore();
