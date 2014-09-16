@@ -130,7 +130,10 @@ public class PageActivity extends RoboFragmentActivity {
                 // Never paused before, we're allowing the user to take up again.
                 sequence.setStatus(Sequence.STATUS_RECENTLY_PARTIALLY_COMPLETED);
             }
-            startSchedulerService();
+
+            if (sequence.getType().equals(Sequence.TYPE_PROBE)) {
+                startSchedulerService();
+            }
             finish();
         }
 

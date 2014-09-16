@@ -676,7 +676,7 @@ public class StatusManager {
 
         Logger.d(TAG, "Cancelling notified polls");
         Intent pollServiceIntent = new Intent(context, ProbeService.class);
-        pollServiceIntent.putExtra(ProbeService.CANCEL_PENDING_POLLS, true);
+        pollServiceIntent.putExtra(ProbeService.CANCEL_PENDING_PROBES, true);
         context.startService(pollServiceIntent);
     }
 
