@@ -50,9 +50,22 @@ public class ProbeService extends RoboService {
     public synchronized int onStartCommand(Intent intent, int flags, int startId) {
         Logger.d(TAG, "ProbeService started");
 
+        // TODO: if started to expire, check notification expiry is explained, expire (if still pending) and set recentlyMissed status
+
+        // TODO: if started to expire or dismiss, reschedule.
+
+        // TODO: if started to create, set all recently* to missedOrDismissedOrIncomplete. There should be at most one (if not, report to ACRA).
+        // Use a pending probe and cancel its notif, or create new.
+        // schedule self for expiry with an intent that won't be cancelled elsewhere except in deleteIntent
+        // add deleteIntent to set recentlyDismissed status (with same intent as expiry, only runs once)
+
+        // TODO: if started to create, but a probe is running, do nothing (it will reschedule from onPause in probe)
+        // TODO: if started to create, but dashboard is running, reschedule.
+
         super.onStartCommand(intent, flags, startId);
 
         if (intent.getBooleanExtra(CANCEL_PENDING_POLLS, false)) {
+            // TODO: also flush recently* here
             Logger.v(TAG, "Started to cancel pending probes");
             cancelPendingProbes();
         } else {

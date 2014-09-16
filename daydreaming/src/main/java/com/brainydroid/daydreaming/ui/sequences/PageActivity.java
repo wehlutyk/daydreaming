@@ -75,11 +75,14 @@ public class PageActivity extends RoboFragmentActivity {
         pageIntroText.setText(sequence.getIntro());
         setRobotoFont();
 
+        // TODO: if opening too late, and notification expiry not explained, Explain. Set recentlyMissed, quit.
+
         // Self generated probe do not interfere with usual scheduling
         if (!sequence.isSelfInitiated()) {
             // If this is a probe and we're at the first page, reschedule so as not
             // to have a new probe appear in the middle of this one
             if (sequence.getType().equals(Sequence.TYPE_PROBE) && currentPage.isFirstOfSequence()) {
+                // TODO: don't reschedule here, only do it in onPause.
                 startSchedulerService();
             }
         }
@@ -116,9 +119,12 @@ public class PageActivity extends RoboFragmentActivity {
         super.onPause();
         if (!isFinishing) {
             Logger.d(TAG, "We're not finishing the sequence -> pausing it");
-            sequence.setStatus(Sequence.STATUS_PARTIALLY_COMPLETED);
+            // TODO: if already coming from partially completed, set missedOrDismissedOrIncomplete
+            sequence.setStatus(Sequence.STATUS_RECENTLY_PARTIALLY_COMPLETED);
             finish();
         }
+
+        // TODO: if probe, relaunch scheduler (make sure this doesn't happen because of a dialog)
 
         // Save everything to DB
         sequence.flushSaves();

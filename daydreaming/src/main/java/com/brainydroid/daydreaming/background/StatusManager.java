@@ -73,6 +73,8 @@ public class StatusManager {
 
     public static String NOTIFICATION_EXPIRY_EXPLAINED = "notificationExpiryExplained";
 
+    // TODO: add transient dashboard lock, that expires after 2 minutes
+
     public static final String ACTION_PARAMETERS_STATUS_CHANGE = "actionParametersStatusChange";
 
     public static int MODE_PROD = 0;

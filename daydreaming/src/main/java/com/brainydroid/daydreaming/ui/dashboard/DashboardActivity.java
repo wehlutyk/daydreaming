@@ -3,9 +3,7 @@ package com.brainydroid.daydreaming.ui.dashboard;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -16,7 +14,6 @@ import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.support.v4.app.NotificationCompat;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -144,6 +141,9 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         updateRunningTime();
         updateChromeMode();
         super.onStart();
+
+        // TODO: show if we have a recently*. With date/time. And lock in statusManager (renew every minute).
+        // unlock statusManager when quitting (but make sure this doesn't happen because of a dialog)
 
         populateShowcaseViews();
         if (statusManager.areParametersUpdated()){
@@ -739,6 +739,11 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
                 Logger.d(TAG, "Swipe Event detected");
                 if (statusManager.areParametersUpdated()){
                     Logger.d(TAG, "Swipe Event used");
+
+                    // TODO: if we have a recently* probe, suggest it (with date/time) (Three buttons: cancel/resume/new), else just suggest new/cancel
+                    // if had recently* but chose new or cancelled, set all to missedOrDismissedOrIncomplete
+                    // There should be at most one recent*. If not, report  to ACRA.
+
                     if ( Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                         AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(DashboardActivity.this);
                         // set title
@@ -786,6 +791,9 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     }
 
     public Sequence createProbe() {
+        // TODO: if resuming a recent*, use it.
+        // Otherwise take a pending one and cancel its notif, or create new.
+
         probe = sequenceBuilder.buildSave(Sequence.TYPE_PROBE);
         probe.setSelfInitiated(true);
         return probe;

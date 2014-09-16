@@ -41,7 +41,11 @@ public class BeginQuestionnaireService extends RoboService {
                 !statusManager.areBeginQuestionnairesCompleted()) {
             notifyQuestionnaire();
         }
+
         //TODO[Vincent] Schedule the next Questionnaire reminder
+
+        // TODO: if beginEndQuestionnaire already running, do nothing.
+
         stopSelf();
         return START_REDELIVER_INTENT;
     }
