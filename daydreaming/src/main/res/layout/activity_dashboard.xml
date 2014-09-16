@@ -493,8 +493,8 @@
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
             android:layout_alignParentLeft="true"
-            android:onClick="runPollNow"
-            android:text="@string/dashboard_test_text_probe_now"/>
+            android:onClick="runSyncNow"
+            android:text="@string/dashboard_test_text_sync_now"/>
 
         <Button
             android:id="@+id/button_reload_parameters"
