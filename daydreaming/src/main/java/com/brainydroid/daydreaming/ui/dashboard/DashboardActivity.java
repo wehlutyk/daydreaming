@@ -96,6 +96,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     @InjectResource(R.string.dashboard_hour) String textHour;
     @InjectResource(R.string.dashboard_hours) String textHours;
     @InjectResource(R.string.dashboard_minutes) String textMinutes;
+    @InjectResource(R.string.dashboard_minute) String textMinute;
     @InjectResource(R.string.dashboard_ago) String agoText;
     @InjectResource(R.string.dashboard_swipe_to_get_back) String swipeToGetBack;
 
@@ -257,15 +258,13 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
                 / (60 * 1000);
         if (delayMinutes < 60) {
             msgBuilder.append(Math.round(delayMinutes));
-            msgBuilder.append(textMinutes);
+            msgBuilder.append(" ");
+            msgBuilder.append(delayMinutes == 1 ? textMinute : textMinutes);
         } else {
             int hourNumber = Math.round(delayMinutes / 60);
             msgBuilder.append(hourNumber);
-            if (hourNumber > 1) {
-                msgBuilder.append(textHours);
-            } else {
-                msgBuilder.append(textHour);
-            }
+            msgBuilder.append(" ");
+            msgBuilder.append(hourNumber == 1 ? textHour : textHours);
         }
 
         msgBuilder.append(" ");
@@ -276,6 +275,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     private void updateRecentProbesView() {
         Sequence recentProbe = getRecentProbe();
         if (recentProbe != null) {
+            Logger.v(TAG, "Found a recent probe");
             StringBuilder msgBuilder = new StringBuilder();
             if (recentProbe.getStatus().equals(Sequence.STATUS_RECENTLY_MISSED)) {
                 msgBuilder.append(youMissed);
@@ -298,7 +298,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
             recentProbeText.setVisibility(View.VISIBLE);
         } else {
             recentProbeText.setText("");
-            recentProbeText.setVisibility(View.GONE);
+            recentProbeText.setVisibility(View.INVISIBLE);
         }
     }
 
@@ -873,6 +873,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
                             .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int id) {
                                     recentProbe.setStatus(Sequence.STATUS_MISSED_OR_DISMISSED_OR_INCOMPLETE);
+                                    updateRecentProbesView();
                                     dialog.cancel();
                                 }
                             })
@@ -957,6 +958,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         Intent probeIntent = new Intent(this, PageActivity.class);
         // Set the id of the probe to start
         probeIntent.putExtra(PageActivity.EXTRA_SEQUENCE_ID, probe.getId());
+        probe.setNotificationSystemTimestamp(Calendar.getInstance().getTimeInMillis());
         // Create a new task. The rest is defined in the App manifest.
         probeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(probeIntent);
