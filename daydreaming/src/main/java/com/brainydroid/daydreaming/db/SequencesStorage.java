@@ -80,7 +80,11 @@ public class SequencesStorage
             }
         }
 
-        return uploadableSequences;
+        if (uploadableSequences.size() == 0) {
+            return null;
+        } else {
+            return uploadableSequences;
+        }
     }
 
     public synchronized ArrayList<Sequence> getPendingSequences(String type) {

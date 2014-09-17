@@ -192,7 +192,7 @@ public class ProbeService extends RoboService {
     private synchronized void flushRecentlyMarkedProbes() {
         ArrayList<Sequence> recentProbes = sequencesStorage.getRecentlyMarkedSequences(
                 Sequence.TYPE_PROBE);
-        if (recentProbes != null) {
+        if (recentProbes != null && recentProbes.size() > 0) {
             if (recentProbes.size() > 1) {
                 Logger.e(TAG, "Found more than one recently marked probe. Offending probes:");
                 Logger.eRaw(TAG, json.toJsonInternal(recentProbes));
@@ -210,7 +210,7 @@ public class ProbeService extends RoboService {
 
     private synchronized boolean isProbeRunning() {
         ArrayList<Sequence> runningProbes = sequencesStorage.getRunningSequences(Sequence.TYPE_PROBE);
-        if (runningProbes != null) {
+        if (runningProbes != null && runningProbes.size() > 0) {
             if (runningProbes.size() > 1) {
                 // We have a problem
                 Logger.e(TAG, "Found more than one running probe. Offending probes:");
@@ -300,7 +300,7 @@ public class ProbeService extends RoboService {
         ArrayList<Sequence> pendingProbes = sequencesStorage.getPendingSequences(
                 Sequence.TYPE_PROBE);
 
-        if (pendingProbes != null) {
+        if (pendingProbes != null && pendingProbes.size() > 0) {
             Logger.d(TAG, "Reusing previously pending probe");
             probe = pendingProbes.get(0);
             // Cancelling the notification is done in notifyProbe()
@@ -364,7 +364,7 @@ public class ProbeService extends RoboService {
         Logger.d(TAG, "Cancelling pending probes");
         ArrayList<Sequence> pendingProbes = sequencesStorage.getPendingSequences(
                 Sequence.TYPE_PROBE);
-        if (pendingProbes != null) {
+        if (pendingProbes != null && pendingProbes.size() > 0) {
             for (Sequence probe : pendingProbes) {
                 notificationManager.cancel(probe.getId());
                 sequencesStorage.remove(probe.getId());
