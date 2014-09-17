@@ -70,8 +70,9 @@ public class StatusManager {
     public static String ARE_RESULTS_NOTIFIED_DASHBOARD = "areResultsNotifiedDashboard";
     public static String ARE_RESULTS_NOTIFIED = "areResultsNotified";
 
-    public static String CURRENT_BEG_END_QUESTIONNAIRE_TYPE = "currentBEQType";
+    public static String NOTIFICATION_EXPIRY_EXPLAINED = "notificationExpiryExplained";
 
+    public static String CURRENT_BEG_END_QUESTIONNAIRE_TYPE = "currentBEQType";
 
     public static final String ACTION_PARAMETERS_STATUS_CHANGE = "actionParametersStatusChange";
 
@@ -92,6 +93,8 @@ public class StatusManager {
     public static int DELAY_TO_ANSWER_BEGQ = 3;
 
     private int cachedCurrentMode = MODE_DEFAULT;
+    private boolean isDashboardRunning = false;
+    private long isDashboardRunningTimestamp = -1;
     private boolean isParametersSyncRunning = false;
     private boolean isRegistrationRunning = false;
     private boolean isSequencesSyncRunning = false;
@@ -244,6 +247,43 @@ public class StatusManager {
 
         eSharedPreferences.remove(getCurrentModeName() + ARE_RESULTS_NOTIFIED);
         eSharedPreferences.commit();
+    }
+
+    public synchronized void setNotificationExpiryExplained() {
+    Logger.d(TAG, "{} - Setting notificationExpiryExplained to true", getCurrentModeName(), true);
+
+    eSharedPreferences.putBoolean(getCurrentModeName() + NOTIFICATION_EXPIRY_EXPLAINED, true);
+    eSharedPreferences.commit();
+}
+
+    public synchronized boolean isNotificationExpiryExplained() {
+        if (sharedPreferences.getBoolean(getCurrentModeName() + NOTIFICATION_EXPIRY_EXPLAINED,
+                false)) {
+            Logger.v(TAG, "{} - Notification expiry not yet explained", getCurrentModeName());
+            return true;
+        } else {
+            Logger.v(TAG, "{} - Notification expiry not yet explained", getCurrentModeName());
+            return false;
+        }
+    }
+
+    public synchronized void clearNotificationExpiryExplained() {
+        Logger.d(TAG, "{} - Clearing notificationExpiryExplained", getCurrentModeName());
+
+        eSharedPreferences.remove(getCurrentModeName() + NOTIFICATION_EXPIRY_EXPLAINED);
+        eSharedPreferences.commit();
+    }
+
+    public synchronized void setDashboardRunning(boolean running) {
+        Logger.v(TAG, "Setting isDashboardRunning to {}", running);
+        isDashboardRunning = true;
+        isDashboardRunningTimestamp = Calendar.getInstance().getTimeInMillis();
+    }
+
+    public synchronized boolean isDashboardRunning() {
+        long now = Calendar.getInstance().getTimeInMillis();
+        // Dashboard is running, and we have that information from less than 2 minutes ago
+        return isDashboardRunning && (now - isDashboardRunningTimestamp < 2 * 60 * 1000);
     }
 
     /**
@@ -563,6 +603,7 @@ public class StatusManager {
         clearExperimentStartTimestamp();
         clearResultsNotified();
         clearResultsNotifiedDashboard();
+        clearNotificationExpiryExplained();
 
         // Cancel any running location collection and pending notifications.
         // This is done after the switch to make sure no polls / location collection are
@@ -593,9 +634,10 @@ public class StatusManager {
         // Cancel any running location collection and pending notifications
         cancelNotifiedPollsAndCollectingLocations();
 
-        // Clear result flags
+        // Clear result and notification expiry flags
         clearResultsNotified();
         clearResultsNotifiedDashboard();
+        clearNotificationExpiryExplained();
 
         // Clear crypto storage to force a new handshake
         cryptoStorageProvider.get().clearStore();
@@ -638,7 +680,7 @@ public class StatusManager {
 
         Logger.d(TAG, "Cancelling notified polls");
         Intent pollServiceIntent = new Intent(context, ProbeService.class);
-        pollServiceIntent.putExtra(ProbeService.CANCEL_PENDING_POLLS, true);
+        pollServiceIntent.putExtra(ProbeService.CANCEL_PENDING_PROBES, true);
         context.startService(pollServiceIntent);
     }
 
@@ -816,8 +858,8 @@ public class StatusManager {
                 }
                 return true;
             }
+            return false;
         }
-        return false;
     }
 
 

@@ -32,17 +32,12 @@ import roboguice.service.RoboService;
  * @see SyncService
  * @see ProbeService
  */
+
+// TODO: database cleaning. If running since long time ago, or null status: flush.
+// TODO: check schedulerService life: when started, when not
 public class SchedulerService extends RoboService {
 
     private static String TAG = "SchedulerService";
-
-    /** Extra to set to {@code true} for debugging */
-    public static String SCHEDULER_DEBUGGING = "schedulerDebugging";
-
-    /** Scheduling delay when debugging is activated */
-    public static long DEBUG_DELAY = 5 * 1000; // 5 seconds
-
-    public static long QUESTIONNAIRE_DELAY_AFTER_WINDOW_START = 30 * 60 * 1000; // 30 minutes
 
     // Handy object that will be holding the 'now' time
     private Calendar now;
@@ -84,15 +79,13 @@ public class SchedulerService extends RoboService {
         // happen to be updated, the SchedulerService will be run again.
         startSyncService();
 
-        // Schedule a probe
         if (!statusManager.areParametersUpdated()) {
             Logger.d(TAG, "Parameters not updated yet. aborting scheduling.");
             return START_REDELIVER_INTENT;
         }
 
         // Schedule a probe
-        boolean debugging = intent.getBooleanExtra(SCHEDULER_DEBUGGING, false);
-        scheduleProbe(debugging);
+        scheduleProbe();
 
         stopSelf();
 
@@ -133,23 +126,20 @@ public class SchedulerService extends RoboService {
      * Schedule a {@link com.brainydroid.daydreaming.sequence.Sequence} to be created
      * and notified by {@link ProbeService} later on.
      *
-     * @param debugging Set to {@link true} for a fixed short delay before
-     *                  notification
      */
-    private synchronized void scheduleProbe(boolean debugging) {
+    private synchronized void scheduleProbe() {
         Logger.d(TAG, "Scheduling new probe");
 
         // Generate the time at which the probe will appear
-        long scheduledTime = generateProbeTime(debugging);
+        long scheduledTime = generateProbeTime();
 
         // Create and schedule the PendingIntent for ProbeService
         Intent intent = new Intent(this, ProbeService.class);
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0,
-                intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        PendingIntent pendingIntent = PendingIntent.getService(this,
+                ProbeService.REQUEST_CODE_CREATION, intent, PendingIntent.FLAG_CANCEL_CURRENT);
         alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 scheduledTime, pendingIntent);
     }
-
 
     private synchronized void fixNowAndGetAllowedWindow() {
         Logger.d(TAG, "Fixing now and obtaining allowed time window");
@@ -210,12 +200,10 @@ public class SchedulerService extends RoboService {
      * is the same (see {@link #makeRespectfulDelay} and {@link
      * #makeRespectfulExpansion} for details).
      *
-     * @param debugging Set to {@link true} to get a fixed short delay for
-     *                  the notification instead of a random delay
      * @return Scheduled (and shifted) moment for the probe to appear,
      *         in milliseconds from epoch
      */
-    private synchronized long generateProbeTime(boolean debugging) {
+    private synchronized long generateProbeTime() {
         Logger.d(TAG, "Generating a time for schedule");
 
         // Fix what 'now' means, and retrieve the allowed time window
@@ -223,16 +211,10 @@ public class SchedulerService extends RoboService {
 
         // Build a delay that respects the user's settings.
         long respectfulDelay;
-        if (debugging) {
-            // If we're debugging, keep it real simple.
-            Logger.d(TAG, "Using debug delay");
-            respectfulDelay = DEBUG_DELAY;
-        } else {
-            // Sample a delay and prolong it as necessary to respect the
-            // user's settings.
-            Logger.d(TAG, "Using random time-window-respectful delay");
-            respectfulDelay = makeRespectfulDelay(sampleDelay());
-        }
+        // Sample a delay and prolong it as necessary to respect the
+        // user's settings.
+        Logger.d(TAG, "Using random time-window-respectful delay");
+        respectfulDelay = makeRespectfulDelay(sampleDelay());
 
         // Get the scheduled time into a palatable object.
         Calendar scheduledCalendar = (Calendar)now.clone();
