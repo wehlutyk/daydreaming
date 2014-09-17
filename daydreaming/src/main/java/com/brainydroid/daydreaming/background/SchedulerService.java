@@ -34,12 +34,10 @@ import roboguice.service.RoboService;
  */
 
 // TODO: database cleaning. If running since long time ago, or null status: flush.
-// TODO: check schedulerService doesn't die because not rescheduled.
+// TODO: check schedulerService life: when started, when not
 public class SchedulerService extends RoboService {
 
     private static String TAG = "SchedulerService";
-
-    public static long QUESTIONNAIRE_DELAY_AFTER_WINDOW_START = 30 * 60 * 1000; // 30 minutes
 
     // Handy object that will be holding the 'now' time
     private Calendar now;
@@ -73,6 +71,10 @@ public class SchedulerService extends RoboService {
         // Notify results if they're available
         notifyResultsIfAvailable();
 
+        // Check if we are getting close to the end to enable the final Begin/End questionnaires
+        statusManager.updateBEQType();
+
+
         // Synchronise answers and get parameters if we don't have them. If parameters
         // happen to be updated, the SchedulerService will be run again.
         startSyncService();
@@ -84,13 +86,6 @@ public class SchedulerService extends RoboService {
 
         // Schedule a probe
         scheduleProbe();
-
-        // Schedule begin questionnaire
-        if (!statusManager.areBeginQuestionnairesCompleted()) {
-            scheduleBeginQuestionnaire();
-        } else {
-            Logger.d(TAG, "BeginQuestionnaire all answered . no need to schedule notif.");
-        }
 
         stopSelf();
 
@@ -136,7 +131,7 @@ public class SchedulerService extends RoboService {
         Logger.d(TAG, "Scheduling new probe");
 
         // Generate the time at which the probe will appear
-        long scheduledTime = generateTime();
+        long scheduledTime = generateProbeTime();
 
         // Create and schedule the PendingIntent for ProbeService
         Intent intent = new Intent(this, ProbeService.class);
@@ -144,60 +139,6 @@ public class SchedulerService extends RoboService {
                 ProbeService.REQUEST_CODE_CREATION, intent, PendingIntent.FLAG_CANCEL_CURRENT);
         alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 scheduledTime, pendingIntent);
-    }
-
-    /**
-     * Schedule a {@link com.brainydroid.daydreaming.ui.dashboard.BeginQuestionnairesActivity} to be created
-     * and notified by {@link com.brainydroid.daydreaming.background.BeginQuestionnaireService} later on.
-     *
-     */
-    private synchronized void scheduleBeginQuestionnaire() {
-        Logger.d(TAG, "Scheduling new BeginQuestionnaire");
-
-        // Generate the time at which the probe will appear
-        long scheduledTime = generateBeginQuestionnaireTime();
-
-        // Create and schedule the PendingIntent for ProbeService
-        Intent intent = new Intent(this, BeginQuestionnaireService.class);
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0,
-                intent, PendingIntent.FLAG_CANCEL_CURRENT);
-        alarmManager.set(AlarmManager.ELAPSED_REALTIME,
-                scheduledTime, pendingIntent);
-    }
-
-    private synchronized long generateBeginQuestionnaireTime() {
-
-        // TODO: this schedules in the past very often. Add a day?
-
-        fixNowAndGetAllowedWindow();
-        Logger.d(TAG, "Calculating time for new BeginQuestionnaire notification");
-
-        Calendar start = (Calendar)now.clone();
-        start.set(Calendar.HOUR_OF_DAY, startAllowedHour);
-        start.set(Calendar.MINUTE, startAllowedMinute);
-        Calendar nextStart = (Calendar)start.clone();
-        if (now.after(nextStart)) {
-            nextStart.add(Calendar.DAY_OF_YEAR, 1);
-        }
-
-        long delay;
-        // BeginQuestionnaires are notified 30 min after begin of bother window everyday
-        delay = now.getTimeInMillis() - nextStart.getTimeInMillis()
-                + QUESTIONNAIRE_DELAY_AFTER_WINDOW_START;
-
-        // Log the delay
-        long milliseconds = delay;
-        long hours = milliseconds / (60 * 60 * 1000);
-        milliseconds %= 60 * 60 * 1000;
-        long minutes = milliseconds / (60 * 1000);
-        milliseconds %= 60 * 1000;
-        long seconds = milliseconds / 1000;
-
-        Logger.i(TAG, "BeginQuestionnaireService scheduled in {0} hours, {1} minutes, " +
-                        "and {2} seconds",
-                hours, minutes, seconds);
-
-        return nowUpTime + delay;
     }
 
     private synchronized void fixNowAndGetAllowedWindow() {
@@ -262,7 +203,7 @@ public class SchedulerService extends RoboService {
      * @return Scheduled (and shifted) moment for the probe to appear,
      *         in milliseconds from epoch
      */
-    private synchronized long generateTime() {
+    private synchronized long generateProbeTime() {
         Logger.d(TAG, "Generating a time for schedule");
 
         // Fix what 'now' means, and retrieve the allowed time window

@@ -27,6 +27,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.brainydroid.daydreaming.R;
+import com.brainydroid.daydreaming.background.BEQService;
 import com.brainydroid.daydreaming.background.ErrorHandler;
 import com.brainydroid.daydreaming.background.Logger;
 import com.brainydroid.daydreaming.background.StatusManager;
@@ -134,6 +135,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
                 }
                 areParametersUpdating = statusManager.isParametersSyncRunning();
                 updateExperimentStatus();
+                launchBEQService();
             }
         }
     };
@@ -159,7 +161,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
 
         populateShowcaseViews();
         if (statusManager.areParametersUpdated()){
-             launchShowCaseViewSequence(UNIQUE);
+            launchShowCaseViewSequence(UNIQUE);
         }
     }
 
@@ -315,8 +317,10 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     /**
      * Launching beginning questionnaires activity
      */
-    public void openBeginQuestionnaires(){
-        Intent intent = new Intent(this, BeginQuestionnairesActivity.class);
+    public void openBEQ(String type){
+        Intent intent = new Intent(this, BEQActivity.class);
+        intent.putExtra("questionnaireType", type);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         overridePendingTransition(R.anim.mainfadein, R.anim.splashfadeout);
     }
@@ -603,7 +607,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
         }
 
         debugInfoText.setText(statusManager.getDebugInfoString());
-        updateBeginQuestionnairesButton();
+        updateBEQButton();
     }
 
     private void updateResultsPulse() {
@@ -792,11 +796,21 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
     }
 
     @TargetApi(11)
-    private synchronized void updateBeginQuestionnairesButton() {
+    private synchronized void updateBEQButton() {
 
         if (statusManager.areParametersUpdated()) {
             final AlphaButton btn = (AlphaButton)findViewById(R.id.dashboard_begin_questionnaires_button);
-            if (!statusManager.areBeginQuestionnairesCompleted()) {
+
+            if (statusManager.wereBEQAnsweredOnTime()) {
+                btn.setBackgroundResource(R.drawable.white_rectangle_selector);
+                btn.setTextColor(getResources().getColor(R.color.ui_dark_blue_color));
+            } else {
+                btn.setBackgroundResource(R.drawable.red_rectangle_selector);
+                btn.setTextColor(getResources().getColor(R.color.ui_white_text_color));
+            }
+
+            if (!statusManager.areBEQCompleted()) {
+
                 final Animation animation = new AlphaAnimation(1, 0); // Change alpha from fully visible to invisible
                 animation.setDuration(1000); // duration - half a second
                 animation.setInterpolator(new AccelerateDecelerateInterpolator()); // do not alter animation rate
@@ -806,7 +820,7 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
                 btn.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(final View view) {
-                        openBeginQuestionnaires();
+                        openBEQ(statusManager.getCurrentBEQType());
                     }
                 });
                 btn.setClickable(true);
@@ -1023,6 +1037,12 @@ public class DashboardActivity extends RoboFragmentActivity implements View.OnCl
             sv.setStyle(R.style.CustomShowcaseTheme);
             showcaseViewIndex += 1;
         }
+    }
+
+    private synchronized void launchBEQService() {
+        Intent intent = new Intent(this, BEQService.class);
+        intent.putExtra(BEQService.IS_PERSISTENT,true);
+        startService(intent);
     }
 
 

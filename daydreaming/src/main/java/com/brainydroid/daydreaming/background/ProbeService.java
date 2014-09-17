@@ -106,11 +106,7 @@ public class ProbeService extends RoboService {
         } else {
             Logger.v(TAG, "Started to create and notify a probe");
 
-            // If the questions haven't been downloaded (which is probably
-            // because the json was malformed), only reschedule (which will
-            // re-download the questions; hopefully they will have been fixed)
-            // and don't show any probe.
-            if (statusManager.areParametersUpdated()) {
+            if (statusManager.areParametersUpdated() && statusManager.wereBEQAnsweredOnTime()) {
                 // If there's a probe running, do nothing.
                 if (isProbeRunning()) {
                     Logger.v(TAG, "Probe is running, do nothing");
@@ -135,6 +131,8 @@ public class ProbeService extends RoboService {
 
                 // Schedule expiry
                 scheduleExpiry(probe);
+            } else {
+                reschedule();
             }
         }
 
