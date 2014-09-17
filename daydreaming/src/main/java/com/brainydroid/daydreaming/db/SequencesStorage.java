@@ -74,7 +74,10 @@ public class SequencesStorage
 
         ArrayList<Sequence> uploadableSequences = new ArrayList<Sequence>();
         for (String type : Sequence.AVAILABLE_TYPES) {
-            uploadableSequences.addAll(getUploadableSequences(type));
+            ArrayList<Sequence> typedUploadableSequences = getUploadableSequences(type);
+            if (typedUploadableSequences != null) {
+                uploadableSequences.addAll(typedUploadableSequences);
+            }
         }
 
         return uploadableSequences;

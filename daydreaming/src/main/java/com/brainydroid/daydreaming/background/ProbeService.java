@@ -192,7 +192,7 @@ public class ProbeService extends RoboService {
     private synchronized void flushRecentlyMarkedProbes() {
         ArrayList<Sequence> recentProbes = sequencesStorage.getRecentlyMarkedSequences(
                 Sequence.TYPE_PROBE);
-        if (recentProbes.size() > 0) {
+        if (recentProbes != null) {
             if (recentProbes.size() > 1) {
                 Logger.e(TAG, "Found more than one recently marked probe. Offending probes:");
                 Logger.eRaw(TAG, json.toJsonInternal(recentProbes));
@@ -210,7 +210,7 @@ public class ProbeService extends RoboService {
 
     private synchronized boolean isProbeRunning() {
         ArrayList<Sequence> runningProbes = sequencesStorage.getRunningSequences(Sequence.TYPE_PROBE);
-        if (runningProbes.size() > 0) {
+        if (runningProbes != null) {
             if (runningProbes.size() > 1) {
                 // We have a problem
                 Logger.e(TAG, "Found more than one running probe. Offending probes:");
