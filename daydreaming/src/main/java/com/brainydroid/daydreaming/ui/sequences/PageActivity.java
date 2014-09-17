@@ -51,6 +51,7 @@ public class PageActivity extends RoboFragmentActivity {
     private Page currentPage;
     private long lastBackTime = 0;
     private boolean isContinuingOrFinishing = false;
+    private boolean isTooLate = false;
     @Inject private PageViewAdapter pageViewAdapter;
 
     @InjectView(R.id.page_relativeLayout) RelativeLayout outerPageLayout;
@@ -85,11 +86,8 @@ public class PageActivity extends RoboFragmentActivity {
         // If this is a probe that is not being re-opened, and this is the first page,
         // then if we're too late -> expire the probe.
         if (sequence.getType().equals(Sequence.TYPE_PROBE) &&
-                currentPage.isFirstOfSequence() && !sequence.wasMissedOrDismissedOrPaused()
-                && !checkTooLate()) {
-            // Fail straight away without going through onStart/onResume/onPause/onStop
-            sequence.setStatus(Sequence.STATUS_RECENTLY_MISSED);
-            finish();
+                currentPage.isFirstOfSequence() && !sequence.wasMissedOrDismissedOrPaused()) {
+            checkTooLate();
         }
     }
 
@@ -121,7 +119,7 @@ public class PageActivity extends RoboFragmentActivity {
     public void onPause() {
         Logger.d(TAG, "Pausing");
         super.onPause();
-        if (!isContinuingOrFinishing) {
+        if (!isContinuingOrFinishing && !isTooLate) {
             Logger.d(TAG, "We're not finishing the sequence -> pausing it");
             if (sequence.wasMissedOrDismissedOrPaused()) {
                 // We were already paused before. Closing this probe definitively.
@@ -181,8 +179,12 @@ public class PageActivity extends RoboFragmentActivity {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
                     dialogInterface.cancel();
+                    sequence.setStatus(Sequence.STATUS_RECENTLY_MISSED);
+                    setIsTooLate();
+                    finish();
                 }
             });
+            alertBuilder.show();
 
             return false;
         }
@@ -224,6 +226,10 @@ public class PageActivity extends RoboFragmentActivity {
 
     private void setIsContinuingOrFinishing() {
         isContinuingOrFinishing = true;
+    }
+
+    private void setIsTooLate() {
+        isTooLate = true;
     }
 
     public boolean isPotentialEndPage() {

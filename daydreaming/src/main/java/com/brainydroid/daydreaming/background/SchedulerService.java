@@ -32,6 +32,9 @@ import roboguice.service.RoboService;
  * @see SyncService
  * @see ProbeService
  */
+
+// TODO: database cleaning. If running since long time ago, or null status: flush.
+// TODO: check schedulerService doesn't die because not rescheduled.
 public class SchedulerService extends RoboService {
 
     private static String TAG = "SchedulerService";
@@ -137,8 +140,8 @@ public class SchedulerService extends RoboService {
 
         // Create and schedule the PendingIntent for ProbeService
         Intent intent = new Intent(this, ProbeService.class);
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0,
-                intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        PendingIntent pendingIntent = PendingIntent.getService(this,
+                ProbeService.REQUEST_CODE_CREATION, intent, PendingIntent.FLAG_CANCEL_CURRENT);
         alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 scheduledTime, pendingIntent);
     }
@@ -163,6 +166,9 @@ public class SchedulerService extends RoboService {
     }
 
     private synchronized long generateBeginQuestionnaireTime() {
+
+        // TODO: this schedules in the past very often. Add a day?
+
         fixNowAndGetAllowedWindow();
         Logger.d(TAG, "Calculating time for new BeginQuestionnaire notification");
 

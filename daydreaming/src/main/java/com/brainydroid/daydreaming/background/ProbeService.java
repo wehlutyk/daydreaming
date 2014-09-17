@@ -46,6 +46,10 @@ public class ProbeService extends RoboService {
     public static String DISMISS_PROBE = "dismissProbe";
     public static String PROBE_ID = "probeId";
 
+    public static int REQUEST_CODE_CREATION = 1;
+    public static int REQUEST_CODE_DISMISSAL = 2;
+    public static int REQUEST_CODE_EXPIRY = 3;
+
     @Inject NotificationManager notificationManager;
     @Inject SequencesStorage sequencesStorage;
     @Inject SequenceBuilder sequenceBuilder;
@@ -58,9 +62,15 @@ public class ProbeService extends RoboService {
     @Inject AlarmManager alarmManager;
 
     @Override
+    public synchronized void onDestroy() {
+        Logger.v(TAG, "Destroying");
+    }
+
+    @Override
     public synchronized int onStartCommand(Intent intent, int flags, int startId) {
         Logger.d(TAG, "ProbeService started");
 
+        Logger.v(TAG, "StartId: {}", startId);
         super.onStartCommand(intent, flags, startId);
 
         if (intent.getBooleanExtra(CANCEL_PENDING_PROBES, false)) {
@@ -68,6 +78,7 @@ public class ProbeService extends RoboService {
             cancelPendingProbes();
             flushRecentlyMarkedProbes();
         } else if (intent.getBooleanExtra(EXPIRE_PROBE, false)) {
+            Logger.v(TAG, "Started to expire pending probes");
             int probeId = intent.getIntExtra(PROBE_ID, -1);
             if (probeId == -1) {
                 // We have a problem
@@ -81,6 +92,7 @@ public class ProbeService extends RoboService {
                 expireProbe(probeId);
             }
         } else if (intent.getBooleanExtra(DISMISS_PROBE, false)) {
+            Logger.v(TAG, "Started to dismiss probe");
             int probeId = intent.getIntExtra(PROBE_ID, -1);
             if (probeId == -1) {
                 // We have a problem
@@ -101,12 +113,14 @@ public class ProbeService extends RoboService {
             if (statusManager.areParametersUpdated()) {
                 // If there's a probe running, do nothing.
                 if (isProbeRunning()) {
+                    Logger.v(TAG, "Probe is running, do nothing");
                     stopSelf();
                     return START_REDELIVER_INTENT;
                 }
 
                 // If Dashboard is running, reschedule (so as not to flush recently* during dashboard)
                 if (statusManager.isDashboardRunning()) {
+                    Logger.v(TAG, "Dashboard is running, rescheduling");
                     reschedule();
                     stopSelf();
                     return START_REDELIVER_INTENT;
@@ -183,7 +197,7 @@ public class ProbeService extends RoboService {
         intent.putExtra(PROBE_ID, probe.getId());
 
         long scheduledTime = SystemClock.elapsedRealtime() + Sequence.EXPIRY_DELAY;
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0,
+        PendingIntent pendingIntent = PendingIntent.getService(this, REQUEST_CODE_EXPIRY,
                 intent, 0);
         alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 scheduledTime, pendingIntent);
@@ -261,7 +275,8 @@ public class ProbeService extends RoboService {
         Intent dismissalIntent = new Intent(this, ProbeService.class);
         dismissalIntent.putExtra(DISMISS_PROBE, true);
         dismissalIntent.putExtra(PROBE_ID, probe.getId());
-        PendingIntent pendingDismissal = PendingIntent.getService(this, 0, dismissalIntent, 0);
+        PendingIntent pendingDismissal = PendingIntent.getService(this, REQUEST_CODE_DISMISSAL,
+                dismissalIntent, 0);
 
         // Create our notification
         Notification notification = new NotificationCompat.Builder(this)
