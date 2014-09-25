@@ -40,6 +40,11 @@
         <item>Advanced Degree (MA, PhD, etc.)</item>
     </string-array>
 
-
+    <string-array name="language">
+        <item>French</item>
+        <item>Breton</item>
+        <item>Basque</item>
+        <item>Corse</item>
+    </string-array>
 
 </resources>
