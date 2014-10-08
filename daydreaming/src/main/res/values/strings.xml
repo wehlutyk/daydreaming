@@ -8,7 +8,6 @@
 
     <!-- __________________________________________________ -->
 
-    <string name="app_name">Daydreaming</string>
     <string name="menu_settings">Settings</string>
 
     <!-- Dashboard -->
@@ -31,8 +30,9 @@
     <string name="dashboard_text_results_in">Results in</string>
     <string name="dashboard_text_see_results">See results</string>
     <string name="dashboard_button_change_data_settings">Data Settings</string>
-    <string name="dashboard_test_text_probe_now">Probe Now</string>
     <string name="dashboard_test_text_sync_now">Sync Now</string>
+    <string name="dashboard_test_text_morningQuestionnaire">Test Morning</string>
+    <string name="dashboard_test_text_eveningQuestionnaire">Test Evening</string>
     <string name="dashboard_test_text_reload_parameters">Reload parameters</string>
     <string name="dashboard_text_begin_questionnaires">Questions</string>
     <string name="dashboard_button_text_instruction">Instructions</string>
@@ -72,8 +72,8 @@
     <string name="sv_glossary_text">A list of useful definitions</string>
     <string name="sv_results_title">Results</string>
     <string name="sv_results_text">When available, a detailed report for you here!</string>
-    <string name="sv_swipe_title">Self Report</string>
-    <string name="sv_swipe_text">Swipe right for a self report</string>
+    <string name="sv_swipe_title">Share your daydream!</string>
+    <string name="sv_swipe_text">Swipe if you can\'t wait for notifications</string>
     <string name="sv_time_elapsed_title">Time Elapsed</string>
     <string name="sv_time_elapsed_text">The duration you have been running this app</string>
     <string name="sv_time_left_title">Time Left</string>
@@ -85,26 +85,26 @@
     <!-- About/credits Activity -->
     <string name="credits_text_title_about">ABOUT</string>
     <string name="credits_text_main1">
-    This App has been developped by a team of French researchers in Paris, London and Berlin. 
-    \n Science en Poche ("Science in your pocket") kindly supports this project.</string>
-    <string name="credits_text_main2">We do other apps to. For more information, feel free to visit our website</string>
+    This App has been developped by a team of French researchers in Paris, London and Berlin.
+    \nScience en Poche ("Science in your pocket") kindly supports this project.</string>
+    <string name="credits_text_main2">We do other apps too. For more information, feel free to visit our website</string>
     <string name="credits_website">www.daydreaming-the-app.net</string>
     <string name="credits_text_title_our_team">OUR TEAM</string>
 
     <string name="vincent_name">Vincent Adam</string>
-    <string name="vincent_description">Phd Student at UCL \n Gatsby Unit</string>
+    <string name="vincent_description">Phd Student at UCL \nGatsby Unit</string>
 
     <string name="sebastien_name">Sébastien Lerique</string>
     <string name="sebastien_description">Phd Student at Berlin</string>
 
     <string name="mikael_name">Mikaël Bastian</string>
-    <string name="mikael_description">Phd Student at Paris \n Ecole Normale Supérieure</string>
+    <string name="mikael_description">Phd Student at Paris \nEcole Normale Supérieure</string>
 
     <string name="gislain_name">Gislain Delaire</string>
     <string name="gislain_description">Designer at Paris</string>
 
     <string name="jerome_name">Jérôme Sackur</string>
-    <string name="jerome_description">Cognitive Psychologist at Paris \n Ecole Normale Supérieure</string>
+    <string name="jerome_description">Cognitive Psychologist at Paris \nEcole Normale Supérieure</string>
 
     <string name="credits_institution1">inst1</string>
     <string name="credits_institution2">inst2</string>
@@ -147,8 +147,8 @@
     <string name="appsettings_allow_blink_text">Blinks at questions</string>
     <string name="appsettings_allow_vibrations_text">Vibrates at questions</string>
     <string name="appsettings_allow_sound_text">Beeps at questions</string>
-    <string name="settings_time_window_lb_default">10:00</string>
-    <string name="settings_time_window_ub_default">19:00</string>
+    <string name="settings_time_window_lb_default">8:00</string>
+    <string name="settings_time_window_ub_default">22:00</string>
 
     <!-- Profile Activity -->
     <string name="firstLaunchProfile_title_activity">Profile</string>
@@ -157,6 +157,9 @@
     <string name="firstLaunchProfile_fix_age">Please enter an age between 5 and 100</string>
     <string name="firstLaunchProfile_text_gender">Gender</string>
     <string name="firstLaunchProfile_text_education">Education</string>
+    <string name="firstLaunchProfile_text_mother_tongue">Mother Tongue</string>
+    <string name="firstLaunchProfile_hint_mother_tongue">type</string>
+
     <string name="firstLaunchProfile_text_age">Age</string>
     <string name="firstLaunchProfile_Spinner_gender_prompt">Select your gender</string>
     <string name="firstLaunchProfile_Spinner_education_prompt">Select your education</string>
@@ -184,8 +187,8 @@
     <string name="page_button_finish">Finish</string>
     <string name="page_thank_you">Great! That\'s recorded</string>
     <string name="page_intro_text">Right before the app interrupted you…</string>
-    <string name="page_edit_mode_edit">Edit mode</string>
-    <string name="page_edit_mode_done">Done</string>
+    <string name="page_edit_mode_edit">Edit\nactivities</string>
+    <string name="page_edit_mode_cancel">Cancel</string>
     <string name="page_too_late_title">Oops, too late!</string>
     <string name="page_too_late_body">Probes are meant to be answered quickly, so we can\'t let you answer this one. From now on notifications will disappear on their own after a few minutes. If you want to answer a probe you missed, you can do so in the dashboard, it will suggest any missed probes.</string>
 
@@ -248,45 +251,23 @@
 
 
     <string name="terms_html">
-        <![CDATA[<p>Welcome to the Daydreaming app! </p>
-<p>This application is part of a <i>research project</i> in cognitive psychology that aims at describing the richness of human mental life and at understanding the conditions causing people to daydream. </p>
-<p>The Daydreaming app sends notifications at random moments every day to probe the content and form of your thoughts and the context in which they occur.
-After a few examples, each notification will take just a minute or so to fill out.</p>
-<p>Specific questions about your sleep qualities and how you spent your free time will also be displayed every morning and every evening.</p>
-<p>Finally, during the first three days, the Daydream app requires you to fill three psychological questionnaires about your mental habits.</p>
-
-<p>Your responses, along with your current location, will be sent back to our server <b>in anonymous form</b>. 
-After a month of using the app, <i>you will unlock a “See results” sections</i> that presents a detailed report on what kind of daydreamer you are.</p>
-<p>Before starting, you will be asked to answer a few questions about yourself and to define the settings of the app. This should only take a few minutes, and only needs to be done once.</p>
-<p>If you’d like to know more about our research, and how we use your data, please click on “more information“ below. You can also find this information again at any time in the ‘Terms’ section of the app. </p>
-<p>If you’re ready to begin, click “Agree” below.</p>]]>
-    </string>
-
-    <string name="more_terms_html">
         <![CDATA[
-
-<hr>
-
-<p><b>What will I do?  </b></p>
-<p>Just wait until the app notifies you that questions are available, and then answer them! In the meanwhile you can start answering the three psychological questionnaires.</p>
-
-<p><b>How long will it take? </b></p>
-<p>Filling the three questionnaires will take less than fifteen minutes, and you can fill each of them when you wish. You\'ll do that only twice: in the first three days, and once again in a month. Answering the questions about your thoughts will take about a minute every time, and the app will notify you a few times a day (5 - 7 on average). Answering the questions about your sleep quality and your free time will take again a couple of minutes. So even if you respond to every single notification every single day, you will spend <b>no more than 10 minutes a day</b> using DayDreaming. But if you wish to participate more, you can always spontaneously report your thoughts, by swyping on the dashboard.</p>
+<p>This application is part of a <i>cognitive science research project</i>. As such, it requires your informed consent. Please read the following answers to the questions you may have and uninstall the app if you disagree with anything.</p>
 
 <p><b>What data will I be sharing?</b></p>
-<p>In addition to the responses you give to the questions presented in each notification, we also collect coarse GPS data, which tells us your current location accurate to approximately 0.2 - 0.5 miles.</p>
+<p>Scientific research is based on data collection and analysis. The app collects your responses to the questionnaires and probes. Your coarse GPS data, which tells us your current location with a 0.2 - 0.5 miles error is also collected every 20 minutes. Crucially, these two kind of data are sent to our server <b> in anonymous form </b>, with a personnalized but arbitrary identification number. </p>
 
 <p><b>What will you do with this data?</b></p>
 <p><i>Research!</i> We’ll combine your data with data from thousands of other people to ask questions like: what activities tend to precipitate daydreaming? In what locations are people most likely to daydream? What kind of people are more or less likely to experience mind wandering? And so on. We expect to publish our findings in traditional peer-reviewed social/cognitive science journals.</p>
 
 <p><b>Is it anonymous?</b><p>
-<p><i>Yes</i>. We deliberately avoid asking you for any identifying information such as your email address, name, address, etc. If you look at the app permissions you’ll note that the only permissions we ask for are network access (required in order to send your data back to our server) and coarse GPS data (which we use to determine where you were when you answered the notification).<p>
+<p><i>Yes</i>. We deliberately avoid asking you for any identifying information such as your email address, name, address, etc. If you look at the app permissions you’ll note that the only permissions we ask for are network access (required in order to send your data back to our server) and coarse GPS data (which we use to determine where you were when you answered the notification).</p>
 
 <p><b>Is it confidential?</b></p>
-<p>Yes. We will not share your responses with anyone except the research team. But remember that since your responses are anonymous to begin with, so it’s not as though the data is of much use to anyone except us.</p>
+<p><i>Yes</i>. We will not share your responses with anyone except the research team. But remember that since your responses are anonymous to begin with, it\'s not as though the data is of much use to anyone except us.</p>
 
 <p><b>Is it secure?</b></p>
-<p>Yes. Your data is sent back to our server over a secure connection.<p>
+<p><i>Yes</i>. Your data is sent back to our server over a secure connection.</p>
 
 <p><b>Do I have to take part in the research to use the app?</b></p>
 <p>Technically, no; you can choose to opt out of sending your data to our server. But if you do opt out, we won’t be able to analyze your responses and provide you with any feedback about your daydreaming tendencies, so we’re not sure why you’d want to use the app without participating in the research!</p>
@@ -296,6 +277,33 @@ After a month of using the app, <i>you will unlock a “See results” sections<
 
 <p><b>How much data does it use?</b></p>
 <p>Very little: under 10kb per day. To put it in perspective, this is much less than the vast majority of apps you can install from the Play Store, and is only a fraction of the amount of data an app like Google Maps will use in a typical session.</p>
+
+<p>If you’d like to know more about the app, please click on “more information“ below. You can also find this information again at any time in the ‘Terms’ section of the app. </p>
+<p>If you’re ready to begin, click “Agree” below.</p>]]>
+    </string>
+
+    <string name="more_terms_html">
+        <![CDATA[
+
+<hr>
+
+<p><b>What will I do?  </b></p>
+<p>Just wait until the app notifies you that questions are available, and then answer them! In the meanwhile you can fill the three psychological questionnaires.</p>
+
+<p><b>How long will it take? </b></p>
+<p><i>Less than 10 minutes/day</i>. Here is the detail:</p>
+<p>Answering the questions about your thoughts will take about a minute every time, and the app will notify you a few times a day (5 - 7 on average).</p>
+<p>Answering the questions about your sleep quality and your free time will take again a couple of minutes.</p>
+<p>So even if you respond to every single notification every single day, you will spend <b>no more than 10 minutes a day</b> using DayDreaming. </p>
+<p>But if you wish to participate more, you can always spontaneously report your thoughts, by swyping on the dashboard.</p>
+<p>And as for filling all of the three questionnaires, it will take less than fifteen minutes. You can fill each of them when you wish. You\'ll do that only twice: in the first three days, and once again in a month. </p>
+
+<p><b>When do I get to see my results? </b></p>
+<p>After 30 days, you will unlock a <i>“See results”</i> sections that presents a <b>detailed report on what kind of daydreamer</b> you are.</p>
+<p>After 60 days, we will provide you with a comparison with the people that also completed the app.</p>
+
+<p><b>Why do I have to wait this long? </b></p>
+<p>Analysis must be done on sufficient data, and we don\'t want to provide you with a faulty summary. For example, if you want to know whether you daydream more at home or at work, you must answer many reports. These reports should be of course both at home and at work, but also at different times a day, different days, and even different weeks. The idea is that their numbers will then drown the errors arising from extraordinary contexts: you may have been extraordinarily tired one day, or have had an extraordinarily busy week or even have made a mistake when reporting!</p>
 
 ]]>
     </string>
