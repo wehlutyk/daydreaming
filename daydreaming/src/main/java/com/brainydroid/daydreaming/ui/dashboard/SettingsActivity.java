@@ -22,13 +22,20 @@ import android.widget.TimePicker;
 import android.widget.Toast;
 
 import com.brainydroid.daydreaming.R;
+import com.brainydroid.daydreaming.background.ErrorHandler;
 import com.brainydroid.daydreaming.background.Logger;
 import com.brainydroid.daydreaming.background.StatusManager;
+import com.brainydroid.daydreaming.db.Json;
+import com.brainydroid.daydreaming.db.ProfileStorage;
 import com.brainydroid.daydreaming.db.Util;
 import com.brainydroid.daydreaming.ui.FontUtils;
 import com.brainydroid.daydreaming.ui.TimePickerFragment;
 import com.brainydroid.daydreaming.ui.firstlaunchsequence.FirstLaunch00WelcomeActivity;
 import com.google.inject.Inject;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.HashMap;
 
 import roboguice.activity.RoboFragmentActivity;
 import roboguice.inject.ContentView;
@@ -40,6 +47,7 @@ public class SettingsActivity extends RoboFragmentActivity {
 
     public static String TIME_FROM = "time_from";
     public static String TIME_UNTIL = "time_until";
+
 
     private static String TAG = "SettingsActivity";
     @SuppressWarnings("FieldCanBeLocal") private static int MIN_WINDOW_HOURS = 5; // 5 hours (in hours)
@@ -64,6 +72,8 @@ public class SettingsActivity extends RoboFragmentActivity {
 
     @Inject SharedPreferences sharedPreferences;
     @Inject StatusManager statusManager;
+    @Inject ProfileStorage profileStorage;
+
 
     @InjectResource(R.string.settings_time_window_lb_default) String defaultTimePreferenceMin;
     @InjectResource(R.string.settings_time_window_ub_default) String defaultTimePreferenceMax;
@@ -110,6 +120,52 @@ public class SettingsActivity extends RoboFragmentActivity {
     private void initVars() {
         Logger.d(TAG, "Initializing variables");
         updateTimeViews();
+    }
+
+    private String getNowString() {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DATE, 1);
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String formatted = format.format(cal.getTime());
+        return formatted;
+    }
+
+
+//    public class BotherWindowMapWrapper {
+//        private HashMap<String, String> botherWindowMap;
+//
+//        public BotherWindowMapWrapper() { }
+//
+//        public void setBotherWindowMap(HashMap<String, String> botherWindowMap_) {
+//            this.botherWindowMap = botherWindowMap_;
+//        }
+//        public HashMap<String, String> getBotherWindowMap() {
+//            return this.botherWindowMap;
+//        }
+//
+//    }
+
+
+
+
+    public void updateBotherWindowMap() {
+        // get hashmap from shared preferences through profile
+        HashMap<String, String> botherWindowMap = profileStorage.getBotherWindowMap();
+        // update hashmap
+        String timeFrom = sharedPreferences.getString(TIME_FROM, defaultTimePreferenceMin);
+        String[] fromParts = timeFrom.split(":");
+        final int minuteFrom = Integer.parseInt(fromParts[1]);
+        final int hourFrom = Integer.parseInt(fromParts[0]);
+        String timeUntil = sharedPreferences.getString(TIME_UNTIL, defaultTimePreferenceMax);
+        String[] untilParts = timeUntil.split(":");
+        final int minuteUntil = Integer.parseInt(untilParts[1]);
+        final int hourUntil = Integer.parseInt(untilParts[0]);
+
+        String botherwindow = "{'from':" + hourFrom + ":" + pad(minuteFrom) +
+                ", 'until':" + hourUntil + ":" + pad(minuteUntil) + "}";
+        botherWindowMap.put(getNowString(), botherwindow);
+        // save hashmap into shared preferences and profile
+        profileStorage.setBotherWindowMap(botherWindowMap);
     }
 
     public void addListenerOnButton() {
@@ -175,6 +231,8 @@ public class SettingsActivity extends RoboFragmentActivity {
                         correctTimeWindow();
                         updateTimeViews();
                         statusManager.launchNotifyingServices();
+                        updateBotherWindowMap();
+
                     }
 
                 };
@@ -211,6 +269,7 @@ public class SettingsActivity extends RoboFragmentActivity {
                         correctTimeWindow();
                         updateTimeViews();
                         statusManager.launchNotifyingServices();
+                        updateBotherWindowMap();
                     }
 
                 };
